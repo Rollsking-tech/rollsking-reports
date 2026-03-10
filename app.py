@@ -1046,7 +1046,7 @@ with tab_report:
         </div>""", unsafe_allow_html=True)
     else:
         if st.button("⚡ Generate Report"):
-            with st.spinner("Processing data and building report..."):
+            with st.spinner("Processing data... this takes about 10–20 seconds"):
                 try:
                     all_zmt, all_swg, all_fc = {}, {}, {}
                     for d in valid_files:
@@ -1057,18 +1057,41 @@ with tab_report:
                         mapping, all_zmt, all_swg, all_fc, hygiene_scores
                     )
                     excel_bytes = build_excel(results, disclaimers, flags, sel_month)
-                    pdf_bytes   = build_pdf_report(results, flags, disclaimers, sel_month)
                     month_slug  = sel_month.replace(" ", "_")
                     st.session_state.report_bytes = excel_bytes
                     st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
-                    st.session_state.pdf_bytes    = pdf_bytes
-                    st.session_state.pdf_name     = f"RollsKing_Report_{month_slug}.pdf"
-                    st.success(
-                        f"✓ Report ready — {len(results)} Team Leaders · "
-                        f"{sum(r['outlets'] for r in results)} Outlets · {len(flags)} Flags"
-                    )
+
+                    # PDF — graceful fallback if reportlab not installed
+                    try:
+                        pdf_bytes = build_pdf_report(results, flags, disclaimers, sel_month)
+                        st.session_state.pdf_bytes = pdf_bytes
+                        st.session_state.pdf_name  = f"RollsKing_Report_{month_slug}.pdf"
+                        pdf_ok = True
+                    except ModuleNotFoundError:
+                        st.session_state.pdf_bytes = None
+                        st.session_state.pdf_name  = None
+                        pdf_ok = False
+
+                    n_tls     = len(results)
+                    n_outlets = sum(r["outlets"] for r in results)
+                    n_flags   = len(flags)
+
+                    st.success(f"✓ Report ready — {n_tls} Team Leaders · {n_outlets} Outlets · {n_flags} Flags")
+                    if not pdf_ok:
+                        st.warning(
+                            "📄 PDF could not be generated — reportlab library is missing from the server. "
+                            "Excel report is ready to download. Ask your developer to add "
+                            "'reportlab>=4.0.0' to requirements.txt and redeploy."
+                        )
+
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    err = str(e)
+                    if "No module named" in err:
+                        st.error(f"⚠️ Missing library: {err}. Ask your developer to check requirements.txt.")
+                    elif "sheet" in err.lower() or "worksheet" in err.lower():
+                        st.error("⚠️ Could not read the uploaded file. Make sure it contains Zomato, Swiggy, and Food Cost sheets.")
+                    else:
+                        st.error(f"⚠️ Something went wrong: {err}")
                     import traceback; st.code(traceback.format_exc())
 
     if st.session_state.report_bytes:
@@ -1080,9 +1103,15 @@ with tab_report:
                 data=st.session_state.report_bytes, file_name=st.session_state.report_name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         with c2:
-            st.download_button("📄 Download PDF Summary",
-                data=st.session_state.pdf_bytes, file_name=st.session_state.pdf_name,
-                mime="application/pdf")
+            if st.session_state.pdf_bytes:
+                st.download_button("📄 Download PDF Summary",
+                    data=st.session_state.pdf_bytes, file_name=st.session_state.pdf_name,
+                    mime="application/pdf")
+            else:
+                st.markdown("""<div style="background:#1a1a1a;border:1px dashed #333;border-radius:8px;
+                padding:0.6rem 1rem;color:#555;font-size:0.82rem;text-align:center;margin-top:4px;">
+                    📄 PDF unavailable — reportlab missing on server
+                </div>""", unsafe_allow_html=True)
 
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 2 — MANAGE MAPPING
