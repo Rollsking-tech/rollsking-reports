@@ -2,10 +2,8 @@ import streamlit as st
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from difflib import SequenceMatcher
 from datetime import datetime
 import io
-import json
 
 # ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -19,72 +17,48 @@ st.set_page_config(
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
-
 html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
 .stApp { background: #0f0f0f; color: #f0f0f0; }
-
 .main-title {
     font-family: 'Syne', sans-serif;
     font-size: 2.4rem; font-weight: 800;
     color: #ffffff; letter-spacing: -1px;
     line-height: 1.1; margin-bottom: 0.2rem;
 }
-.main-subtitle {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.95rem; color: #888;
-    font-weight: 300; margin-bottom: 2rem;
-}
+.main-subtitle { color: #666; font-size: 0.95rem; margin-bottom: 1.5rem; }
 .section-label {
     font-family: 'Syne', sans-serif;
-    font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 2.5px; text-transform: uppercase;
-    color: #e8a020; margin-bottom: 0.4rem;
+    font-size: 0.78rem; font-weight: 700;
+    color: #e8a020; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 0.4rem;
 }
 .card {
     background: #1a1a1a; border: 1px solid #2a2a2a;
-    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
+    border-radius: 12px; padding: 1.1rem 1.3rem;
+    margin-bottom: 1rem;
 }
 .card-gold {
-    background: #1a1a1a; border: 1px solid #e8a020;
-    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
+    background: #1a1500; border: 1px solid #e8a020;
+    border-radius: 12px; padding: 1.1rem 1.3rem;
+    margin-bottom: 1rem;
 }
-.status-ok  { color: #4ade80; font-size: 0.82rem; font-weight: 500; }
-.status-warn{ color: #fbbf24; font-size: 0.82rem; font-weight: 500; }
-.status-err { color: #f87171; font-size: 0.82rem; font-weight: 500; }
-.chip-ok  { display:inline-block; background:#052e16; color:#4ade80; border-radius:20px;
-             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
-.chip-warn{ display:inline-block; background:#2a1f00; color:#fbbf24; border-radius:20px;
-             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
-.chip-miss{ display:inline-block; background:#2a0f0f; color:#f87171; border-radius:20px;
-             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
+.status-ok  { color: #4ade80; font-weight: 600; font-size: 0.9rem; }
+.status-warn{ color: #fbbf24; font-weight: 600; font-size: 0.9rem; }
+.chip-ok   { background:#14532d; color:#4ade80; border-radius:6px; padding:3px 10px; font-size:0.82rem; display:inline-block; margin:2px 0; }
+.chip-warn { background:#7c2d12; color:#fca5a5; border-radius:6px; padding:3px 10px; font-size:0.82rem; display:inline-block; margin:2px 0; }
 .step-badge {
-    display:inline-block; background:#e8a020; color:#0f0f0f;
-    border-radius:50%; width:26px; height:26px; text-align:center;
-    line-height:26px; font-weight:800; font-size:0.85rem;
-    font-family:'Syne',sans-serif; margin-right:8px;
+    background: #e8a020; color: #000; border-radius: 50%;
+    width: 22px; height: 22px; display: inline-block;
+    text-align: center; line-height: 22px;
+    font-weight: 800; font-size: 0.8rem; margin-right: 8px;
 }
-.divider { border:none; border-top:1px solid #2a2a2a; margin:1.5rem 0; }
-
-/* Streamlit overrides */
-.stFileUploader > div {
-    background: #1a1a1a !important;
-    border: 1.5px dashed #3a3a3a !important;
-    border-radius: 12px !important;
-}
-.stFileUploader > div:hover { border-color: #e8a020 !important; }
-.stNumberInput > div > div > input,
-.stTextInput > div > div > input,
-.stSelectbox > div > div {
-    background: #1a1a1a !important; border: 1px solid #333 !important;
-    color: #f0f0f0 !important; border-radius: 8px !important;
-}
+hr.divider { border: none; border-top: 1px solid #2a2a2a; margin: 1.5rem 0; }
 .stButton > button {
-    background: #e8a020 !important; color: #0f0f0f !important;
-    font-family: 'Syne', sans-serif !important; font-weight: 700 !important;
-    font-size: 1rem !important; border: none !important;
-    border-radius: 8px !important; padding: 0.6rem 2rem !important;
-    letter-spacing: 0.5px !important; width: 100% !important;
-    transition: all 0.2s !important;
+    background: #e8a020 !important; color: #000 !important;
+    font-family: 'Syne', sans-serif !important;
+    font-weight: 700 !important; border-radius: 8px !important;
+    border: none !important; padding: 0.55rem 1.5rem !important;
+    font-size: 0.9rem !important;
 }
 .stButton > button:hover { background: #f5b535 !important; transform: translateY(-1px) !important; }
 .stPasswordInput > div > div > input {
@@ -98,12 +72,8 @@ div[data-testid="stExpander"] {
 .stTabs [data-baseweb="tab-list"] { background: #1a1a1a !important; border-radius: 10px !important; }
 .stTabs [data-baseweb="tab"] { color: #888 !important; }
 .stTabs [aria-selected="true"] { color: #e8a020 !important; }
-[data-testid="stMetricValue"] { color: #e8a020 !important; font-family: 'Syne', sans-serif !important; }
 </style>
 """, unsafe_allow_html=True)
-
-# ── PASSWORD ──────────────────────────────────────────────────────────────────
-APP_PASSWORD = "rollsking2025"
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────
 def safe_id(v):
@@ -121,350 +91,315 @@ def safe_f(v, d=0.0):
 def parse_pct(v):
     if v is None: return None
     try:
-        f = float(str(v).strip().replace('%','').replace('₹',''))
+        s = str(v).replace('%', '').strip()
+        f = float(s)
         return f if f > 1 else f * 100
     except: return None
 
 def parse_min(v):
     if v is None: return None
-    try: return float(str(v).strip().replace(' min','').replace('min',''))
+    try: return float(str(v).replace(' mins','').replace(' min','').strip())
     except: return None
-
-def fuzzy(name, candidates, threshold=0.45):
-    best, score = None, 0
-    for c in candidates:
-        s = SequenceMatcher(None, str(name).lower().strip(), str(c).lower().strip()).ratio()
-        if s > score: score, best = s, c
-    return best if score >= threshold else None
 
 def score_c(pct):
     if pct is None: return 0
-    if pct <= 1: return 4
-    if pct <= 2: return 3
-    if pct <= 3: return 1
+    if pct <= 1:  return 4
+    if pct <= 2:  return 3
+    if pct <= 3:  return 1
     return 0
 
 def score_tier(avg):
-    for name, lo, hi in [("Bronze", 0, 3), ("Silver", 3, 6), ("Gold", 6, 8), ("Platinum", 8, 100)]:
-        if lo <= avg < hi: return name
-    return "Platinum" if avg >= 8 else "Bronze"
+    if avg >= 8: return "Platinum"
+    if avg >= 6: return "Gold"
+    if avg >= 3: return "Silver"
+    return "Bronze"
 
-# ── DETECT FILE TYPE ──────────────────────────────────────────────────────────
+# ── HARDCODED MAPPING ─────────────────────────────────────────────────────────
+DEFAULT_MAPPING = {
+  "Navneet Singh": [
+    {"outlet":"Sec 104","pos":28039,"zmt_rk":19476740,"zmt_rf":20884624,"swg_rk":313666,"swg_rf":783919},
+    {"outlet":"Sector-141 Noida","pos":26592,"zmt_rk":18734595,"zmt_rf":21198454,"swg_rk":63465,"swg_rf":882814},
+    {"outlet":"Sector-132 Noida","pos":34303,"zmt_rk":18750756,"zmt_rf":21563311,"swg_rk":68184,"swg_rf":998424},
+    {"outlet":"Sector 125, Noida","pos":373602,"zmt_rk":21824279,"zmt_rf":21819721,"swg_rk":1069514,"swg_rf":1069500},
+    {"outlet":"Sector-73,Noida","pos":97074,"zmt_rk":20508934,"zmt_rf":20511693,"swg_rk":635149,"swg_rf":641252},
+    {"outlet":"sector-44 Noida.","pos":39966,"zmt_rk":18575970,"zmt_rf":21570341,"swg_rk":42813,"swg_rf":1035832}
+  ],
+  "Ajay Halder": [
+    {"outlet":"Sector 4 Noida","pos":21787,"zmt_rk":19364731,"zmt_rf":20884617,"swg_rk":54622,"swg_rf":784582},
+    {"outlet":"Sector-62","pos":23687,"zmt_rk":302308,"zmt_rf":21292616,"swg_rk":42808,"swg_rf":907194},
+    {"outlet":"sector-35","pos":32851,"zmt_rk":20374787,"zmt_rf":20884635,"swg_rk":583789,"swg_rf":798506},
+    {"outlet":"Sector-18","pos":26952,"zmt_rk":304612,"zmt_rf":None,"swg_rk":42807,"swg_rf":1238358},
+    {"outlet":"Gaur City, G.Noida","pos":112772,"zmt_rk":20589872,"zmt_rf":21087471,"swg_rk":879431,"swg_rf":940381},
+    {"outlet":"Eco Loft","pos":74178,"zmt_rk":20264919,"zmt_rf":22245955,"swg_rk":531120,"swg_rf":1227942}
+  ],
+  "Sunil Sharma": [
+    {"outlet":"RDC Raj Nagar, Gzb","pos":363143,"zmt_rk":18962941,"zmt_rf":21184529,"swg_rk":879460,"swg_rf":883371},
+    {"outlet":"GNB Mall","pos":113953,"zmt_rk":21341669,"zmt_rf":21340893,"swg_rk":1082869,"swg_rf":1089374},
+    {"outlet":"Shipra Mall","pos":408910,"zmt_rk":22103426,"zmt_rf":None,"swg_rk":1238359,"swg_rf":None}
+  ],
+  "Vishwanath Rao": [
+    {"outlet":"Indirapuram","pos":38041,"zmt_rk":18633334,"zmt_rf":20884637,"swg_rk":46674,"swg_rf":784485},
+    {"outlet":"Rajendra Nagar Gzb","pos":37055,"zmt_rk":19283683,"zmt_rf":21563308,"swg_rk":241917,"swg_rf":998786},
+    {"outlet":"Vasundhra","pos":122466,"zmt_rk":20711593,"zmt_rf":21780276,"swg_rk":731841,"swg_rf":1069774}
+  ],
+  "Sanjay Morya": [
+    {"outlet":"Kalkaji","pos":31247,"zmt_rk":18869459,"zmt_rf":20884610,"swg_rk":90719,"swg_rf":783920},
+    {"outlet":"Tilak Nagar","pos":63819,"zmt_rk":18942689,"zmt_rf":20884619,"swg_rk":123197,"swg_rf":786729},
+    {"outlet":"Vasant Kunj","pos":25924,"zmt_rk":19030978,"zmt_rf":21198457,"swg_rk":131217,"swg_rf":883284},
+    {"outlet":"Chattarpur","pos":26423,"zmt_rk":19052007,"zmt_rf":21198467,"swg_rk":140433,"swg_rf":883277},
+    {"outlet":"Paschim Vihar","pos":43412,"zmt_rk":20256577,"zmt_rf":21751304,"swg_rk":531480,"swg_rf":1065481},
+    {"outlet":"Gtb Nagar","pos":79050,"zmt_rk":20323930,"zmt_rf":21929075,"swg_rk":569414,"swg_rf":1101863},
+    {"outlet":"Nathupur,Gurugram","pos":108782,"zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475,"swg_rf":783922},
+    {"outlet":"Old DLF Sec-14,Gurugram","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
+    {"outlet":"Sector-57 Gurugram","pos":74068,"zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165,"swg_rf":803919},
+    {"outlet":"Wazirabad,Gurugram","pos":108779,"zmt_rk":20582847,"zmt_rf":None,"swg_rk":668467,"swg_rf":None},
+    {"outlet":"Gurugram Sec-82","pos":30407,"zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106,"swg_rf":850542},
+    {"outlet":"Sector 90, Gurugram","pos":380769,"zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
+    {"outlet":"Rohini","pos":93493,"zmt_rk":22100897,"zmt_rf":22101011,"swg_rk":622353,"swg_rf":1167156},
+    {"outlet":"Vikashpuri","pos":404584,"zmt_rk":22227640,"zmt_rf":22227658,"swg_rk":1224350,"swg_rf":1224348},
+    {"outlet":"Subhash Nagar","pos":398993,"zmt_rk":22165860,"zmt_rf":22165921,"swg_rk":1196325,"swg_rf":1196321}
+  ],
+  "Zeeshan Ali": [
+    {"outlet":"Shaheen Bagh","pos":118685,"zmt_rk":20666436,"zmt_rf":21190578,"swg_rk":704360,"swg_rf":879433},
+    {"outlet":"NIT,Faridabad","pos":96843,"zmt_rk":20480333,"zmt_rf":21087481,"swg_rk":632083,"swg_rf":852302},
+    {"outlet":"Sec-15 Faridabad","pos":54369,"zmt_rk":18567324,"zmt_rf":21702217,"swg_rk":42815,"swg_rf":1037447},
+    {"outlet":"Lakkarpur,Faridabad","pos":143500,"zmt_rk":20873208,"zmt_rf":21087485,"swg_rk":775707,"swg_rf":855113},
+    {"outlet":"Greenfield, Faridabad","pos":154254,"zmt_rk":21446399,"zmt_rf":21446783,"swg_rk":983943,"swg_rf":991036}
+  ],
+  "Badir Alam": [
+    {"outlet":"Bhopal","pos":338959,"zmt_rk":21340655,"zmt_rf":21340565,"swg_rk":934354,"swg_rf":937374},
+    {"outlet":"Indore","pos":109589,"zmt_rk":20566161,"zmt_rf":21304975,"swg_rk":673809,"swg_rf":920802},
+    {"outlet":"Siddharth Nagar,Indore","pos":156653,"zmt_rk":21022031,"zmt_rf":21643899,"swg_rk":690867,"swg_rf":1027884}
+  ],
+  "Abhishek Kumar": [
+    {"outlet":"Whitefield Bangalore","pos":89397,"zmt_rk":20410563,"zmt_rf":21075165,"swg_rk":606509,"swg_rf":850483},
+    {"outlet":"Mahadevpura (Bangalore)","pos":72269,"zmt_rk":20201048,"zmt_rf":20790266,"swg_rk":515199,"swg_rf":700101},
+    {"outlet":"Koramangala","pos":83769,"zmt_rk":20359621,"zmt_rf":20790279,"swg_rk":580691,"swg_rf":709590},
+    {"outlet":"Electronic City Bangalore","pos":72413,"zmt_rk":20213913,"zmt_rf":21087516,"swg_rk":515053,"swg_rf":848482},
+    {"outlet":"Bangalore,Sarjapur","pos":68691,"zmt_rk":20163232,"zmt_rf":20790275,"swg_rk":494751,"swg_rf":649361},
+    {"outlet":"Kalyan Nagar Bangalore","pos":75899,"zmt_rk":20265149,"zmt_rf":21087530,"swg_rk":544214,"swg_rf":848481},
+    {"outlet":"Bel Road Banglore","pos":75897,"zmt_rk":20263151,"zmt_rf":21037571,"swg_rk":536015,"swg_rf":728281},
+    {"outlet":"Habble Banglore","pos":95682,"zmt_rk":20471662,"zmt_rf":None,"swg_rk":625912,"swg_rf":None},
+    {"outlet":"Bangalore (Indira Nagar)","pos":403199,"zmt_rk":22179137,"zmt_rf":22179218,"swg_rk":1203098,"swg_rf":1203101}
+  ],
+  "Virendra Pratap": [
+    {"outlet":"Mohanram Nagar","pos":84743,"zmt_rk":20410863,"zmt_rf":20994725,"swg_rk":588878,"swg_rf":808838},
+    {"outlet":"Madipakkam","pos":84742,"zmt_rk":20410826,"zmt_rf":21627457,"swg_rk":588790,"swg_rf":1021132},
+    {"outlet":"Parengudi,Chennai","pos":97078,"zmt_rk":20486896,"zmt_rf":21087508,"swg_rk":631195,"swg_rf":848486}
+  ],
+  "Atul Kumar": [
+    {"outlet":"Apple Ghar , Pune","pos":129883,"zmt_rk":20748035,"zmt_rf":21044940,"swg_rk":733937,"swg_rf":741458},
+    {"outlet":"Hinjewadi Phase 1, Pune","pos":141096,"zmt_rk":20855724,"zmt_rf":21049119,"swg_rk":756772,"swg_rf":734618},
+    {"outlet":"Millennium Mall Pune","pos":137998,"zmt_rk":21067154,"zmt_rf":None,"swg_rk":833916,"swg_rf":None},
+    {"outlet":"Shivaji Nagar Pune","pos":346318,"zmt_rk":21435196,"zmt_rf":21604740,"swg_rk":354312,"swg_rf":1009928}
+  ],
+  "Bhupesh Bhatt": [
+    {"outlet":"Madhapur","pos":24485,"zmt_rk":18953624,"zmt_rf":21049126,"swg_rk":120196,"swg_rf":698521},
+    {"outlet":"Gachibowli","pos":24487,"zmt_rk":19271816,"zmt_rf":21044950,"swg_rk":214621,"swg_rf":773418},
+    {"outlet":"Banjara Hills","pos":129436,"zmt_rk":21028217,"zmt_rf":21080628,"swg_rk":711834,"swg_rf":844883},
+    {"outlet":"Taranagar,Hyderabad","pos":141099,"zmt_rk":20855101,"zmt_rf":21080636,"swg_rk":766665,"swg_rf":844889},
+    {"outlet":"R K Puram Hyderabad","pos":44718,"zmt_rk":19714313,"zmt_rf":None,"swg_rk":375980,"swg_rf":None},
+    {"outlet":"Lulu Mall, Hyderabad","pos":141214,"zmt_rk":21154081,"zmt_rf":None,"swg_rk":866698,"swg_rf":None},
+    {"outlet":"Miyapur","pos":24489,"zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
+    {"outlet":"Goa (Anjuna)","pos":339817,"zmt_rk":21365117,"zmt_rf":22213849,"swg_rk":946493,"swg_rf":1203077}
+  ],
+  "Milan": [
+    {"outlet":"G Corp","pos":367105,"zmt_rk":21734559,"zmt_rf":21865596,"swg_rk":1063584,"swg_rf":1079375},
+    {"outlet":"Mumbai Pawai","pos":353027,"zmt_rk":21522379,"zmt_rf":21618090,"swg_rk":985771,"swg_rf":1005642},
+    {"outlet":"Raymond","pos":369670,"zmt_rk":21794492,"zmt_rf":21794546,"swg_rk":1066710,"swg_rf":1066711},
+    {"outlet":"Mumbai BKC","pos":375018,"zmt_rk":21824216,"zmt_rf":21824173,"swg_rk":1076952,"swg_rf":1102348},
+    {"outlet":"Mumbai Chembur","pos":383109,"zmt_rk":21966993,"zmt_rf":22030585,"swg_rk":1104174,"swg_rf":1140316},
+    {"outlet":"Airoli Navi Mumbai City","pos":386396,"zmt_rk":21982077,"zmt_rf":22030515,"swg_rk":1123441,"swg_rf":1140313},
+    {"outlet":"Mira Road MumbaiCity","pos":386734,"zmt_rk":22044961,"zmt_rf":22150856,"swg_rk":1142360,"swg_rf":1179699}
+  ]
+}
+
+# ── FILE DETECTION ────────────────────────────────────────────────────────────
 def detect_file_type(file_bytes, filename):
-    """Auto-detect what kind of file was uploaded based on sheet names and content."""
     try:
         wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
         sheets = [s.lower() for s in wb.sheetnames]
-
-        # New monthly format: has zomato raw data + swiggy raw data + food cost
-        has_zomato_raw = any('zomato' in s and ('raw' in s or 'row' in s) for s in sheets)
-        has_swiggy_raw = any('swiggy' in s and 'raw' in s for s in sheets)
-        has_food_cost  = any('food cost' in s for s in sheets)
-        has_sale_raw   = any('sale' in s for s in sheets)
-        has_mapping    = any(s in ('sheet1',) or ('mapping' in s) for s in sheets)
-
-        if has_zomato_raw and has_food_cost and has_sale_raw:
+        has_zomato   = any('zomato' in s for s in sheets)
+        has_swiggy   = any('swiggy' in s for s in sheets)
+        has_foodcost = any('food cost' in s for s in sheets)
+        has_sale     = any('sale' in s for s in sheets)
+        if has_zomato and has_swiggy and has_foodcost and has_sale:
             return 'monthly_raw', wb
-        if has_mapping and not has_zomato_raw:
-            return 'mapping', wb
         return 'unknown', wb
     except:
         return 'unknown', None
 
-# ── LOAD MAPPING FROM STORED JSON ─────────────────────────────────────────────
-def parse_mapping_from_wb(wb):
-    """Parse mapping — supports both Nov Sheet1 format and old Manager to Res ID format."""
-    mapping = {}
-    sheet = None
-    sheet_format = None
-
-    for name in wb.sheetnames:
-        n = name.lower().strip()
-        if n == 'sheet1' or 'mapping' in n:
-            sheet = wb[name]; sheet_format = 'new'; break
-        if 'manager' in n and 'res' in n:
-            sheet = wb[name]; sheet_format = 'old'; break
-
-    if not sheet:
-        available = ", ".join(f"\'{s}\'" for s in wb.sheetnames)
-        return None, (
-            f"Could not find a mapping sheet. "
-            f"Sheets found in this file: {available}. "
-            f"Please upload Nov_Month_Data.xlsx or the Manager to Res ID file."
-        )
-
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        if not row[0]: continue
-
-        if sheet_format == 'old':
-            # Old format: Manager name, Outlet name, Zomato RK, Swiggy RK, Zomato RF, Swiggy RF, PetPooja ID
-            asm     = str(row[0]).strip() if row[0] else ''
-            subzone = str(row[1]).strip() if row[1] else ''
-            zmt_rk  = safe_id(row[2])
-            swg_rk  = safe_id(row[3])
-            zmt_rf  = safe_id(row[4])
-            swg_rf  = safe_id(row[5])
-            pos_id  = safe_id(row[6])
-        else:
-            # New format (Sheet1): Subzone, POS ID, Zone, ASM, Zomato RK, Zomato RF, Swiggy RK, Swiggy RF
-            subzone = str(row[0]).strip() if row[0] else ''
-            pos_id  = safe_id(row[1])
-            asm     = str(row[3]).strip() if row[3] else ''
-            zmt_rk  = safe_id(row[4])
-            zmt_rf  = safe_id(row[5])
-            swg_rk  = safe_id(row[6])
-            swg_rf  = safe_id(row[7])
-
-        if not asm or not subzone: continue
-        if asm not in mapping: mapping[asm] = []
-        mapping[asm].append({
-            'outlet': subzone, 'pos': pos_id,
-            'zmt_rk': zmt_rk, 'zmt_rf': zmt_rf,
-            'swg_rk': swg_rk, 'swg_rf': swg_rf,
-        })
-    return mapping, None
-
-# ── LOAD MONTHLY RAW DATA ─────────────────────────────────────────────────────
+# ── LOAD MONTHLY DATA ─────────────────────────────────────────────────────────
 def load_monthly_raw(wb):
-    """Load Zomato, Swiggy, Food Cost from new monthly file format."""
-
-    # ── Zomato ────────────────────────────────────────────────────────────────
-    zmt_sheet = None
+    # Zomato
+    zmt = {}
     for name in wb.sheetnames:
-        if 'zomato' in name.lower(): zmt_sheet = wb[name]; break
+        if 'zomato' in name.lower():
+            for row in wb[name].iter_rows(min_row=2, values_only=True):
+                rid = safe_id(row[0])
+                if not rid: continue
+                metric = str(row[5]).strip() if row[5] else ''
+                val = row[6]
+                if rid not in zmt:
+                    zmt[rid] = {'orders':0,'complaints':0,'kpt':None,'rating':None}
+                if   metric == 'Delivered orders':    zmt[rid]['orders']     = safe_f(val)
+                elif metric == 'Total complaints':    zmt[rid]['complaints'] = safe_f(val)
+                elif metric == 'KPT (in minutes)':   zmt[rid]['kpt']        = safe_f(val)
+                elif metric == 'Average rating':      zmt[rid]['rating']     = safe_f(val)
+            break
 
-    zmt = {}  # {res_id: {orders, complaints, kpt, rating, online_pct}}
-    if zmt_sheet:
-        for row in zmt_sheet.iter_rows(min_row=2, values_only=True):
-            res_id = safe_id(row[0])
-            if not res_id: continue
-            metric = str(row[5]).strip() if row[5] else ''
-            value  = row[6]
-            if res_id not in zmt:
-                zmt[res_id] = {'orders': 0, 'complaints': 0, 'kpt': None,
-                               'rating': None, 'online_pct': None}
-            if metric == 'Delivered orders':
-                zmt[res_id]['orders'] = safe_f(value)
-            elif metric == 'Total complaints':
-                zmt[res_id]['complaints'] = safe_f(value)
-            elif metric == 'KPT (in minutes)':
-                zmt[res_id]['kpt'] = safe_f(value)
-            elif metric == 'Average rating':
-                zmt[res_id]['rating'] = safe_f(value)
-            elif metric == 'Online %':
-                zmt[res_id]['online_pct'] = parse_pct(value)
-
-    # ── Swiggy ────────────────────────────────────────────────────────────────
-    swg_sheet = None
+    # Swiggy
+    swg = {}
     for name in wb.sheetnames:
-        if 'swiggy' in name.lower(): swg_sheet = wb[name]; break
+        if 'swiggy' in name.lower():
+            for row in wb[name].iter_rows(min_row=2, values_only=True):
+                rid = safe_id(row[0])
+                if not rid: continue
+                metric = str(row[5]).strip() if row[5] else ''
+                val = row[6]
+                if rid not in swg:
+                    swg[rid] = {'kpt':None,'avail':None,'cmp_pct':None,'orders':0}
+                if   metric == 'Kitchen Prep Time':
+                    swg[rid]['kpt'] = parse_min(str(val).replace(' mins','').replace(' min','')) if val else None
+                elif metric == 'Online Availability %':       swg[rid]['avail']   = parse_pct(val)
+                elif metric == '% Orders with Complaints':    swg[rid]['cmp_pct'] = parse_pct(val)
+                elif metric in ('Delivered Orders','Orders'): swg[rid]['orders']  = safe_f(val)
+            break
 
-    swg = {}  # {res_id: {kpt, avail, cmp_pct, orders}}
-    if swg_sheet:
-        for row in swg_sheet.iter_rows(min_row=2, values_only=True):
-            res_id = safe_id(row[0])
-            if not res_id: continue
-            metric = str(row[5]).strip() if row[5] else ''
-            value  = row[6]
-            if res_id not in swg:
-                swg[res_id] = {'kpt': None, 'avail': None, 'cmp_pct': None, 'orders': 0}
-            if metric == 'Kitchen Prep Time':
-                swg[res_id]['kpt'] = parse_min(str(value).replace(' mins','').replace(' min','')) if value else None
-            elif metric == 'Online Availability %':
-                swg[res_id]['avail'] = parse_pct(value)
-            elif metric == '% Orders with Complaints':
-                swg[res_id]['cmp_pct'] = parse_pct(value)
-            elif metric in ('Delivered Orders', 'Orders'):
-                swg[res_id]['orders'] = safe_f(value)
-
-    # ── Food Cost ─────────────────────────────────────────────────────────────
-    fc_sheet = None
+    # Food Cost
+    fc = {}
     for name in wb.sheetnames:
-        if 'food cost' in name.lower(): fc_sheet = wb[name]; break
+        if 'food cost' in name.lower():
+            for row in wb[name].iter_rows(min_row=2, values_only=True):
+                pos = safe_id(row[1])
+                if not pos: continue
+                net_sale = safe_f(row[4]); fc_val = row[9]
+                if fc_val is not None:
+                    fc_pct = safe_f(fc_val)*100 if safe_f(fc_val)<2 else safe_f(fc_val)
+                elif net_sale > 0:
+                    cogs = safe_f(row[5]) + safe_f(row[7]) + safe_f(row[8]) - safe_f(row[6])
+                    fc_pct = round(cogs/net_sale*100, 2)
+                else:
+                    fc_pct = None
+                fc[pos] = {'fc_pct': fc_pct, 'net_sale': net_sale}
+            break
 
-    food_cost = {}  # {pos_id: {fc_pct, net_sale}}
-    if fc_sheet:
-        for row in fc_sheet.iter_rows(min_row=2, values_only=True):
-            pos = safe_id(row[1])
-            if not pos: continue
-            # Columns: Subzone, POS ID, Zone, ASM, Net Sale+PC, Opening, Closing, Local/Hyperpure, Store, Food Cost
-            net_sale = safe_f(row[4])
-            opening  = safe_f(row[5])
-            closing  = safe_f(row[6])
-            hyperpure= safe_f(row[7])
-            store    = safe_f(row[8])
-            fc_val   = row[9]  # pre-calculated food cost %
-            if fc_val is not None:
-                fc_pct = safe_f(fc_val) * 100 if safe_f(fc_val) < 2 else safe_f(fc_val)
-            elif net_sale > 0:
-                cogs   = opening + hyperpure + store - closing
-                fc_pct = round(cogs / net_sale * 100, 2)
-            else:
-                fc_pct = None
-            food_cost[pos] = {'fc_pct': fc_pct, 'net_sale': net_sale}
+    # Delivered orders = Zomato + Swiggy combined (for sales scoring)
+    delivered = {}
+    for rid, d in zmt.items():
+        delivered[rid] = delivered.get(rid, 0) + d.get('orders', 0)
+    for rid, d in swg.items():
+        delivered[rid] = delivered.get(rid, 0) + d.get('orders', 0)
 
-    # ── Delivered Orders (Zomato + Swiggy combined) ─────────────────────────────
-    # Used for month-on-month sales growth scoring
-    delivered = {}  # {res_id: total_delivered_orders}
-    for res_id, data in zmt.items():
-        delivered[res_id] = delivered.get(res_id, 0) + data.get('orders', 0)
-    if swg_sheet:
-        for name in wb.sheetnames:
-            if 'swiggy' in name.lower():
-                ws2 = wb[name]
-                for row in ws2.iter_rows(min_row=2, values_only=True):
-                    res_id = safe_id(row[0])
-                    metric = str(row[5]).strip() if row[5] else ''
-                    value  = row[6]
-                    if res_id and metric in ('Delivered Orders', 'Orders') and value:
-                        delivered[res_id] = delivered.get(res_id, 0) + safe_f(value)
+    return zmt, swg, fc, delivered
 
-    return zmt, swg, food_cost, delivered
-
-# ── CALCULATOR (new format) ───────────────────────────────────────────────────
-def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores, prev_delivered=None):
+# ── CALCULATOR ────────────────────────────────────────────────────────────────
+def calculate(mapping, zmt, swg, fc, hygiene_scores, prev_delivered=None):
     results, disclaimers, flags = [], [], []
 
     for tl, outlets in mapping.items():
         n = len(outlets)
         tl_c = tl_k = tl_r = tl_fc = tl_av = 0
-        tl_sales_pts = 0
         outlet_rows = []
 
         for o in outlets:
-            outlet = o['outlet']
-            pos    = o['pos']
-            zids   = [x for x in [o['zmt_rk'], o['zmt_rf']] if x]
-            sids   = [x for x in [o['swg_rk'], o['swg_rf']] if x]
-            notes  = []
+            outlet = o['outlet']; pos = o['pos']
+            zids = [x for x in [o['zmt_rk'], o['zmt_rf']] if x]
+            sids = [x for x in [o['swg_rk'], o['swg_rf']] if x]
+            notes = []
 
-            # ── COMPLAINTS ────────────────────────────────────────────────────
-            # Prefer Swiggy % orders with complaints, fallback to Zomato raw calc
-            s_cmp_pct = None
-            for sid in sids:
-                if sid in swg and swg[sid].get('cmp_pct') is not None:
-                    s_cmp_pct = swg[sid]['cmp_pct']; break
-
-            z_ord   = sum(zmt[r]['orders']     for r in zids if r in zmt)
-            z_cmp_v = sum(zmt[r]['complaints'] for r in zids if r in zmt)
-            z_pct   = round(z_cmp_v / z_ord * 100, 2) if z_ord > 0 else None
-            z_pts   = score_c(z_pct)
-
-            if s_cmp_pct is not None:
-                s_pts   = score_c(s_cmp_pct)
-                cmp_pts = z_pts + s_pts
-                cmp_display = round(s_cmp_pct, 2)
-                cmp_src = "Swiggy+Zomato"
+            # Complaints
+            s_cmp = next((swg[s]['cmp_pct'] for s in sids if s in swg and swg[s].get('cmp_pct') is not None), None)
+            z_ord = sum(zmt[r]['orders']     for r in zids if r in zmt)
+            z_cmp = sum(zmt[r]['complaints'] for r in zids if r in zmt)
+            z_pct = round(z_cmp/z_ord*100, 2) if z_ord > 0 else None
+            if s_cmp is not None:
+                cmp_pts = score_c(s_cmp) + score_c(z_pct)
+                cmp_disp = round(s_cmp, 2); cmp_src = "Swiggy+Zomato"
             elif z_pct is not None:
-                cmp_pts = z_pts
-                cmp_display = z_pct
-                cmp_src = "Zomato only"
+                cmp_pts = score_c(z_pct); cmp_disp = z_pct; cmp_src = "Zomato only"
             else:
-                cmp_pts = 0; cmp_display = 0; cmp_src = "No data"
+                cmp_pts = 0; cmp_disp = 0; cmp_src = "No data"
                 notes.append("No complaint data")
-                disclaimers.append(f"{tl} | {outlet}: Complaint data missing — scored 0")
-
+                disclaimers.append(f"{tl} | {outlet}: complaint data missing")
             tl_c += cmp_pts
-            if cmp_display and cmp_display > 3:
-                flags.append((tl, outlet, "High Complaints", f"{cmp_display:.1f}%", ">3%", cmp_pts))
+            if cmp_disp and cmp_disp > 3:
+                flags.append((tl, outlet, "High Complaints", f"{cmp_disp:.1f}%", ">3%", cmp_pts))
 
-            # ── KPT ──────────────────────────────────────────────────────────
-            kpt_vals = []
-            for sid in sids:
-                if sid in swg and swg[sid].get('kpt') is not None:
-                    kpt_vals.append(swg[sid]['kpt'])
-            # Fallback: Zomato KPT
+            # KPT
+            kpt_vals = [swg[s]['kpt'] for s in sids if s in swg and swg[s].get('kpt') is not None]
             if not kpt_vals:
-                for rid in zids:
-                    if rid in zmt and zmt[rid].get('kpt') is not None:
-                        kpt_vals.append(zmt[rid]['kpt'])
-
+                kpt_vals = [zmt[r]['kpt'] for r in zids if r in zmt and zmt[r].get('kpt') is not None]
             if kpt_vals:
-                avg_kpt = round(sum(kpt_vals) / len(kpt_vals), 2)
+                avg_kpt = round(sum(kpt_vals)/len(kpt_vals), 2)
                 kpt_pts = 1 if avg_kpt < 12 else 0
-                kpt_src = "Swiggy" if any(swg.get(s, {}).get('kpt') for s in sids) else "Zomato"
+                kpt_src = "Swiggy" if any(swg.get(s,{}).get('kpt') for s in sids) else "Zomato"
             else:
                 avg_kpt = None; kpt_pts = 0; kpt_src = "N/A"
                 notes.append("No KPT data")
-                disclaimers.append(f"{tl} | {outlet}: KPT unavailable — scored 0")
-
+                disclaimers.append(f"{tl} | {outlet}: KPT missing")
             tl_k += kpt_pts
             if avg_kpt and avg_kpt >= 12:
                 flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", "≥12 min", kpt_pts))
 
-            # ── RATING ───────────────────────────────────────────────────────
-            rat_vals = []
-            for rid in zids:
-                if rid in zmt and zmt[rid].get('rating'):
-                    rat_vals.append(zmt[rid]['rating'])
-            avg_rat = round(sum(rat_vals) / len(rat_vals), 2) if rat_vals else 0
+            # Rating
+            rat_vals = [zmt[r]['rating'] for r in zids if r in zmt and zmt[r].get('rating')]
+            avg_rat = round(sum(rat_vals)/len(rat_vals), 2) if rat_vals else 0
             rat_pts = 1 if avg_rat >= 4.0 else 0
             tl_r += rat_pts
             if 0 < avg_rat < 4.0:
                 flags.append((tl, outlet, "Low Rating", f"{avg_rat:.2f}", "<4.0", rat_pts))
-            if not rat_vals:
-                notes.append("No rating data")
 
-            # ── AVAILABILITY ─────────────────────────────────────────────────
-            avail_pct = None
-            for sid in sids:
-                if sid in swg and swg[sid].get('avail') is not None:
-                    avail_pct = swg[sid]['avail']; break
-            avail_pts = 1 if (avail_pct is not None and avail_pct >= 98) else 0
+            # Availability
+            avail = next((swg[s]['avail'] for s in sids if s in swg and swg[s].get('avail') is not None), None)
+            avail_pts = 1 if (avail is not None and avail >= 98) else 0
             tl_av += avail_pts
-            if avail_pct is not None and avail_pct < 98:
-                flags.append((tl, outlet, "Low Availability", f"{avail_pct:.1f}%", "<98%", avail_pts))
-            if avail_pct is None:
+            if avail is not None and avail < 98:
+                flags.append((tl, outlet, "Low Availability", f"{avail:.1f}%", "<98%", avail_pts))
+            if avail is None:
                 notes.append("No availability data")
-                disclaimers.append(f"{tl} | {outlet}: Availability missing — scored 0")
+                disclaimers.append(f"{tl} | {outlet}: availability missing")
 
-            # ── FOOD COST ────────────────────────────────────────────────────
-            fc_data = food_cost.get(pos)
+            # Food Cost
+            fc_data = fc.get(pos)
             if fc_data and fc_data['fc_pct'] is not None:
                 fc_pct = round(fc_data['fc_pct'], 2)
                 fc_pts = 1 if fc_pct < 40 else 0
             else:
                 fc_pct = None; fc_pts = 0
                 notes.append("FC data missing")
-                disclaimers.append(f"{tl} | {outlet}: Food cost data missing — scored 0")
-
+                disclaimers.append(f"{tl} | {outlet}: food cost missing")
             tl_fc += fc_pts
             if fc_pct is not None and fc_pct >= 40:
                 flags.append((tl, outlet, "High Food Cost", f"{fc_pct:.1f}%", "≥40%", fc_pts))
 
             outlet_rows.append({
                 'outlet': outlet, 'pos': pos,
-                'cmp_pct': cmp_display, 'cmp_pts': cmp_pts, 'cmp_src': cmp_src,
-                'kpt_avg': avg_kpt, 'kpt_pts': kpt_pts, 'kpt_src': kpt_src,
-                'rat_avg': avg_rat, 'rat_pts': rat_pts,
-                'avail_pct': avail_pct, 'avail_pts': avail_pts,
-                'fc_pct': fc_pct, 'fc_pts': fc_pts,
+                'cmp_pct': cmp_disp, 'cmp_pts': cmp_pts, 'cmp_src': cmp_src,
+                'kpt_avg': avg_kpt,  'kpt_pts': kpt_pts, 'kpt_src': kpt_src,
+                'rat_avg': avg_rat,  'rat_pts': rat_pts,
+                'avail_pct': avail,  'avail_pts': avail_pts,
+                'fc_pct': fc_pct,    'fc_pts': fc_pts,
                 'notes': "; ".join(notes) if notes else "OK"
             })
 
-        # ── SALES (month-on-month growth) ────────────────────────────────────────
-        if prev_delivered is not None:
-            all_ids = []
-            for o in outlets:
-                all_ids += [x for x in [o['zmt_rk'], o['zmt_rf'], o['swg_rk'], o['swg_rf']] if x]
-            curr_total = sum(zmt.get(i, {}).get('orders', 0) for i in all_ids)
-            # Also add swiggy delivered orders for current month
-            for i in all_ids:
-                if i in swg:
-                    curr_total += swg[i].get('orders', 0)
-            prev_total = sum(prev_delivered.get(i, 0) for i in all_ids)
-            if prev_total > 0:
-                tl_sales_pts = 1 if curr_total > prev_total else 0
-            else:
-                tl_sales_pts = 0  # No baseline — can't score
+        # Sales (month-on-month)
+        if prev_delivered:
+            ids = [x for o in outlets for x in [o['zmt_rk'],o['zmt_rf'],o['swg_rk'],o['swg_rf']] if x]
+            curr_total = sum(zmt.get(i,{}).get('orders',0) for i in ids) + \
+                         sum(swg.get(i,{}).get('orders',0) for i in ids)
+            prev_total = sum(prev_delivered.get(i,0) for i in ids)
+            sales_pts = 1 if (prev_total > 0 and curr_total > prev_total) else 0
+        else:
+            sales_pts = 0
 
-        hyg_val    = hygiene_scores.get(tl, 0)
-        total_pts  = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av + tl_sales_pts
-        avg_score  = round(total_pts / n, 1) if n > 0 else 0
-        tier       = score_tier(avg_score)
+        hyg_val   = hygiene_scores.get(tl, 0)
+        total_pts = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av + sales_pts
+        avg_score = round(total_pts / n, 1) if n > 0 else 0
+        tier      = score_tier(avg_score)
 
         results.append({
-            'tl': tl, 'outlets': n, 'sales_pts': tl_sales_pts,
+            'tl': tl, 'outlets': n, 'sales_pts': sales_pts,
             'fc_pts': tl_fc, 'cmp_pts': tl_c, 'kpt_pts': tl_k,
             'rat_pts': tl_r, 'hyg_pts': hyg_val, 'avail_pts': tl_av,
             'total_pts': total_pts, 'avg_score': avg_score,
@@ -473,25 +408,6 @@ def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores, prev_delivered=N
 
     return results, disclaimers, flags
 
-# ── EXCEL BUILDER ─────────────────────────────────────────────────────────────
-TIER_CLR = {
-    "Platinum": ("1F1F1F", "FFD700"), "Gold": ("1F1F1F", "FFA500"),
-    "Silver":   ("1F1F1F", "C0C0C0"), "Bronze": ("FFFFFF", "8B4513")
-}
-CLR = {"hd": "1F2D3D", "hm": "2E4057", "wh": "FFFFFF", "lg": "F2F2F2",
-       "mg": "D9D9D9", "gn": "C6EFCE", "rd": "FFC7CE", "yw": "FFF2CC"}
-
-def bdr():
-    s = Side(style="thin", color="BFBFBF")
-    return Border(left=s, right=s, top=s, bottom=s)
-
-def hrow(ws, r, cols, bg, fg="FFFFFF", sz=9):
-    for c, t in enumerate(cols, 1):
-        cell = ws.cell(row=r, column=c, value=t)
-        cell.font = Font(bold=True, color=fg, size=sz, name="Arial")
-        cell.fill = PatternFill("solid", start_color=bg)
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        cell.border = bdr()
 
 def build_excel(results, disclaimers, flags, month):
     wb = openpyxl.Workbook()
@@ -850,115 +766,15 @@ def build_pdf_report(results, flags, disclaimers, month):
     buf.seek(0)
     return buf.read()
 
-# ── HARDCODED MAPPING (persists across refreshes) ────────────────────────────
-DEFAULT_MAPPING = {
-  "Navneet Singh": [
-    {"outlet":"Sec 104","pos":28039,"zmt_rk":19476740,"zmt_rf":20884624,"swg_rk":313666,"swg_rf":783919},
-    {"outlet":"Sector-141 Noida","pos":26592,"zmt_rk":18734595,"zmt_rf":21198454,"swg_rk":63465,"swg_rf":882814},
-    {"outlet":"Sector-132 Noida","pos":34303,"zmt_rk":18750756,"zmt_rf":21563311,"swg_rk":68184,"swg_rf":998424},
-    {"outlet":"Sector 125, Noida","pos":373602,"zmt_rk":21824279,"zmt_rf":21819721,"swg_rk":1069514,"swg_rf":1069500},
-    {"outlet":"Sector-73,Noida","pos":97074,"zmt_rk":20508934,"zmt_rf":20511693,"swg_rk":635149,"swg_rf":641252},
-    {"outlet":"sector-44 Noida.","pos":39966,"zmt_rk":18575970,"zmt_rf":21570341,"swg_rk":42813,"swg_rf":1035832}
-  ],
-  "Ajay Halder": [
-    {"outlet":"Sector 4 Noida","pos":21787,"zmt_rk":19364731,"zmt_rf":20884617,"swg_rk":54622,"swg_rf":784582},
-    {"outlet":"Sector-62","pos":23687,"zmt_rk":302308,"zmt_rf":21292616,"swg_rk":42808,"swg_rf":907194},
-    {"outlet":"sector-35","pos":32851,"zmt_rk":20374787,"zmt_rf":20884635,"swg_rk":583789,"swg_rf":798506},
-    {"outlet":"Sector-18","pos":26952,"zmt_rk":304612,"zmt_rf":None,"swg_rk":42807,"swg_rf":1238358},
-    {"outlet":"Gaur City, G.Noida","pos":112772,"zmt_rk":20589872,"zmt_rf":21087471,"swg_rk":879431,"swg_rf":940381},
-    {"outlet":"Eco Loft","pos":74178,"zmt_rk":20264919,"zmt_rf":22245955,"swg_rk":531120,"swg_rf":1227942}
-  ],
-  "Sunil Sharma": [
-    {"outlet":"RDC Raj Nagar, Gzb","pos":363143,"zmt_rk":18962941,"zmt_rf":21184529,"swg_rk":879460,"swg_rf":883371},
-    {"outlet":"GNB Mall","pos":113953,"zmt_rk":21341669,"zmt_rf":21340893,"swg_rk":1082869,"swg_rf":1089374},
-    {"outlet":"Shipra Mall","pos":408910,"zmt_rk":22103426,"zmt_rf":None,"swg_rk":1238359,"swg_rf":None}
-  ],
-  "Vishwanath Rao": [
-    {"outlet":"Indirapuram","pos":38041,"zmt_rk":18633334,"zmt_rf":20884637,"swg_rk":46674,"swg_rf":784485},
-    {"outlet":"Rajendra Nagar Gzb","pos":37055,"zmt_rk":19283683,"zmt_rf":21563308,"swg_rk":241917,"swg_rf":998786},
-    {"outlet":"Vasundhra","pos":122466,"zmt_rk":20711593,"zmt_rf":21780276,"swg_rk":731841,"swg_rf":1069774}
-  ],
-  "Sanjay Morya": [
-    {"outlet":"Kalkaji","pos":31247,"zmt_rk":18869459,"zmt_rf":20884610,"swg_rk":90719,"swg_rf":783920},
-    {"outlet":"Tilak Nagar","pos":63819,"zmt_rk":18942689,"zmt_rf":20884619,"swg_rk":123197,"swg_rf":786729},
-    {"outlet":"Vasant Kunj","pos":25924,"zmt_rk":19030978,"zmt_rf":21198457,"swg_rk":131217,"swg_rf":883284},
-    {"outlet":"Chattarpur","pos":26423,"zmt_rk":19052007,"zmt_rf":21198467,"swg_rk":140433,"swg_rf":883277},
-    {"outlet":"Paschim Vihar","pos":43412,"zmt_rk":20256577,"zmt_rf":21751304,"swg_rk":531480,"swg_rf":1065481},
-    {"outlet":"Gtb Nagar","pos":79050,"zmt_rk":20323930,"zmt_rf":21929075,"swg_rk":569414,"swg_rf":1101863},
-    {"outlet":"Nathupur,Gurugram","pos":108782,"zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475,"swg_rf":783922},
-    {"outlet":"Old DLF Sec-14,Gurugram","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
-    {"outlet":"Sector-57 Gurugram","pos":74068,"zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165,"swg_rf":803919},
-    {"outlet":"Wazirabad,Gurugram","pos":108779,"zmt_rk":20582847,"zmt_rf":None,"swg_rk":668467,"swg_rf":None},
-    {"outlet":"Gurugram Sec-82","pos":30407,"zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106,"swg_rf":850542},
-    {"outlet":"Sector 90, Gurugram","pos":380769,"zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
-    {"outlet":"Rohini","pos":93493,"zmt_rk":22100897,"zmt_rf":22101011,"swg_rk":622353,"swg_rf":1167156},
-    {"outlet":"Vikashpuri","pos":404584,"zmt_rk":22227640,"zmt_rf":22227658,"swg_rk":1224350,"swg_rf":1224348},
-    {"outlet":"Subhash Nagar","pos":398993,"zmt_rk":22165860,"zmt_rf":22165921,"swg_rk":1196325,"swg_rf":1196321}
-  ],
-  "Zeeshan Ali": [
-    {"outlet":"Shaheen Bagh","pos":118685,"zmt_rk":20666436,"zmt_rf":21190578,"swg_rk":704360,"swg_rf":879433},
-    {"outlet":"NIT,Faridabad","pos":96843,"zmt_rk":20480333,"zmt_rf":21087481,"swg_rk":632083,"swg_rf":852302},
-    {"outlet":"Sec-15 Faridabad","pos":54369,"zmt_rk":18567324,"zmt_rf":21702217,"swg_rk":42815,"swg_rf":1037447},
-    {"outlet":"Lakkarpur,Faridabad","pos":143500,"zmt_rk":20873208,"zmt_rf":21087485,"swg_rk":775707,"swg_rf":855113},
-    {"outlet":"Greenfield, Faridabad","pos":154254,"zmt_rk":21446399,"zmt_rf":21446783,"swg_rk":983943,"swg_rf":991036}
-  ],
-  "Badir Alam": [
-    {"outlet":"Bhopal","pos":338959,"zmt_rk":21340655,"zmt_rf":21340565,"swg_rk":934354,"swg_rf":937374},
-    {"outlet":"Indore","pos":109589,"zmt_rk":20566161,"zmt_rf":21304975,"swg_rk":673809,"swg_rf":920802},
-    {"outlet":"Siddharth Nagar,Indore","pos":156653,"zmt_rk":21022031,"zmt_rf":21643899,"swg_rk":690867,"swg_rf":1027884}
-  ],
-  "Abhishek Kumar": [
-    {"outlet":"Whitefield Bangalore","pos":89397,"zmt_rk":20410563,"zmt_rf":21075165,"swg_rk":606509,"swg_rf":850483},
-    {"outlet":"Mahadevpura (Bangalore)","pos":72269,"zmt_rk":20201048,"zmt_rf":20790266,"swg_rk":515199,"swg_rf":700101},
-    {"outlet":"Koramangala","pos":83769,"zmt_rk":20359621,"zmt_rf":20790279,"swg_rk":580691,"swg_rf":709590},
-    {"outlet":"Electronic City Bangalore","pos":72413,"zmt_rk":20213913,"zmt_rf":21087516,"swg_rk":515053,"swg_rf":848482},
-    {"outlet":"Bangalore,Sarjapur","pos":68691,"zmt_rk":20163232,"zmt_rf":20790275,"swg_rk":494751,"swg_rf":649361},
-    {"outlet":"Kalyan Nagar Bangalore","pos":75899,"zmt_rk":20265149,"zmt_rf":21087530,"swg_rk":544214,"swg_rf":848481},
-    {"outlet":"Bel Road Banglore","pos":75897,"zmt_rk":20263151,"zmt_rf":21037571,"swg_rk":536015,"swg_rf":728281},
-    {"outlet":"Habble Banglore","pos":95682,"zmt_rk":20471662,"zmt_rf":None,"swg_rk":625912,"swg_rf":None},
-    {"outlet":"Bangalore (Indira Nagar)","pos":403199,"zmt_rk":22179137,"zmt_rf":22179218,"swg_rk":1203098,"swg_rf":1203101}
-  ],
-  "Virendra Pratap": [
-    {"outlet":"Mohanram Nagar","pos":84743,"zmt_rk":20410863,"zmt_rf":20994725,"swg_rk":588878,"swg_rf":808838},
-    {"outlet":"Madipakkam","pos":84742,"zmt_rk":20410826,"zmt_rf":21627457,"swg_rk":588790,"swg_rf":1021132},
-    {"outlet":"Parengudi,Chennai","pos":97078,"zmt_rk":20486896,"zmt_rf":21087508,"swg_rk":631195,"swg_rf":848486}
-  ],
-  "Atul Kumar": [
-    {"outlet":"Apple Ghar , Pune","pos":129883,"zmt_rk":20748035,"zmt_rf":21044940,"swg_rk":733937,"swg_rf":741458},
-    {"outlet":"Hinjewadi Phase 1, Pune","pos":141096,"zmt_rk":20855724,"zmt_rf":21049119,"swg_rk":756772,"swg_rf":734618},
-    {"outlet":"Millennium Mall Pune","pos":137998,"zmt_rk":21067154,"zmt_rf":None,"swg_rk":833916,"swg_rf":None},
-    {"outlet":"Shivaji Nagar Pune","pos":346318,"zmt_rk":21435196,"zmt_rf":21604740,"swg_rk":354312,"swg_rf":1009928}
-  ],
-  "Bhupesh Bhatt": [
-    {"outlet":"Madhapur","pos":24485,"zmt_rk":18953624,"zmt_rf":21049126,"swg_rk":120196,"swg_rf":698521},
-    {"outlet":"Gachibowli","pos":24487,"zmt_rk":19271816,"zmt_rf":21044950,"swg_rk":214621,"swg_rf":773418},
-    {"outlet":"Banjara Hills","pos":129436,"zmt_rk":21028217,"zmt_rf":21080628,"swg_rk":711834,"swg_rf":844883},
-    {"outlet":"Taranagar,Hyderabad","pos":141099,"zmt_rk":20855101,"zmt_rf":21080636,"swg_rk":766665,"swg_rf":844889},
-    {"outlet":"R K Puram Hyderabad","pos":44718,"zmt_rk":19714313,"zmt_rf":None,"swg_rk":375980,"swg_rf":None},
-    {"outlet":"Lulu Mall, Hyderabad","pos":141214,"zmt_rk":21154081,"zmt_rf":None,"swg_rk":866698,"swg_rf":None},
-    {"outlet":"Miyapur","pos":24489,"zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
-    {"outlet":"Goa (Anjuna)","pos":339817,"zmt_rk":21365117,"zmt_rf":22213849,"swg_rk":946493,"swg_rf":1203077}
-  ],
-  "Milan": [
-    {"outlet":"G Corp","pos":367105,"zmt_rk":21734559,"zmt_rf":21865596,"swg_rk":1063584,"swg_rf":1079375},
-    {"outlet":"Mumbai Pawai","pos":353027,"zmt_rk":21522379,"zmt_rf":21618090,"swg_rk":985771,"swg_rf":1005642},
-    {"outlet":"Raymond","pos":369670,"zmt_rk":21794492,"zmt_rf":21794546,"swg_rk":1066710,"swg_rf":1066711},
-    {"outlet":"Mumbai BKC","pos":375018,"zmt_rk":21824216,"zmt_rf":21824173,"swg_rk":1076952,"swg_rf":1102348},
-    {"outlet":"Mumbai Chembur","pos":383109,"zmt_rk":21966993,"zmt_rf":22030585,"swg_rk":1104174,"swg_rf":1140316},
-    {"outlet":"Airoli Navi Mumbai City","pos":386396,"zmt_rk":21982077,"zmt_rf":22030515,"swg_rk":1123441,"swg_rf":1140313},
-    {"outlet":"Mira Road MumbaiCity","pos":386734,"zmt_rk":22044961,"zmt_rf":22150856,"swg_rk":1142360,"swg_rf":1179699}
-  ]
-}
 
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
-if 'logged_in'      not in st.session_state: st.session_state.logged_in      = False
-if 'report_bytes'   not in st.session_state: st.session_state.report_bytes   = None
-if 'report_name'    not in st.session_state: st.session_state.report_name    = None
-if 'pdf_bytes'      not in st.session_state: st.session_state.pdf_bytes      = None
-if 'pdf_name'       not in st.session_state: st.session_state.pdf_name       = None
-# Mapping: always initialise from DEFAULT_MAPPING if not already set this session
-if 'mapping'        not in st.session_state: st.session_state.mapping        = {k: list(v) for k, v in DEFAULT_MAPPING.items()}
-if 'mapping_edited' not in st.session_state: st.session_state.mapping_edited = False
+if 'logged_in'    not in st.session_state: st.session_state.logged_in    = False
+if 'report_bytes' not in st.session_state: st.session_state.report_bytes = None
+if 'report_name'  not in st.session_state: st.session_state.report_name  = None
+if 'pdf_bytes'    not in st.session_state: st.session_state.pdf_bytes    = None
+if 'pdf_name'     not in st.session_state: st.session_state.pdf_name     = None
+if 'mapping'      not in st.session_state:
+    st.session_state.mapping = {k: list(v) for k, v in DEFAULT_MAPPING.items()}
 
 # ── LOGIN ─────────────────────────────────────────────────────────────────────
 APP_PASSWORD = "rollsking2025"
@@ -978,42 +794,41 @@ if not st.session_state.logged_in:
 st.markdown('<div class="main-title">RollsKing Reports</div>', unsafe_allow_html=True)
 st.markdown('<div class="main-subtitle">Monthly Performance Report Generator</div>', unsafe_allow_html=True)
 
-tab_report, tab_mapping = st.tabs(["📊  Generate Report", "🗂️  Manage Mapping"])
-
-# Always use session state mapping (pre-loaded from DEFAULT_MAPPING)
 mapping = st.session_state.mapping
+tl_names = sorted(mapping.keys())
+total_outlets = sum(len(v) for v in mapping.values())
+
+tab_report, tab_mapping = st.tabs(["📊  Generate Report", "🗂️  Manage Mapping"])
 
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 1 — GENERATE REPORT
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_report:
-    tl_names      = sorted(mapping.keys())
-    total_outlets = sum(len(v) for v in mapping.values())
 
-    edited_note = " · <span style='color:#fbbf24;'>Mapping edited this session</span>" if st.session_state.mapping_edited else ""
     st.markdown(f"""
     <div class="card">
         <div class="section-label">Status</div>
-        <span class="status-ok">✓ {len(tl_names)} Team Leaders &nbsp;·&nbsp; {total_outlets} Outlets active</span>{edited_note}
-        <div style="color:#555;font-size:0.78rem;margin-top:0.4rem;">
-            Need to add or change an outlet? Go to the <strong>Manage Mapping</strong> tab.
+        <span class="status-ok">✓ {len(tl_names)} Team Leaders &nbsp;·&nbsp; {total_outlets} Outlets active</span>
+        <div style="color:#555;font-size:0.78rem;margin-top:0.3rem;">
+            Mapping is built-in. Use Manage Mapping tab to add new outlets or TLs.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
     # STEP 1 — UPLOAD
-    st.markdown("""<div style="margin-bottom:0.4rem;">
+    st.markdown("""<div style="margin-bottom:0.5rem;">
         <span class="step-badge">1</span>
-        <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
-        Upload This Month's Data File</span>
+        <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:#fff;">
+        Upload Data Files</span>
         <span style="color:#555;font-size:0.8rem;margin-left:8px;">
-        Must contain: Zomato, Swiggy, Food Cost and Sale sheets</span>
+        For Sales scoring: upload current month + previous month together</span>
     </div>""", unsafe_allow_html=True)
 
     uploaded_files = st.file_uploader(
-        "Drop monthly .xlsx file(s) here",
+        "Drop .xlsx files here (current month required, previous month optional for Sales scoring)",
         type=["xlsx"],
-        accept_multiple_files=True
+        accept_multiple_files=True,
+        label_visibility="collapsed"
     )
 
     detected = []
@@ -1023,31 +838,32 @@ with tab_report:
             ftype, wb = detect_file_type(fbytes, f.name)
             detected.append({"name": f.name, "type": ftype, "bytes": fbytes, "wb": wb})
         for d in detected:
-            icon  = "✓" if d["type"] == "monthly_raw" else "⚠"
-            color = "chip-ok" if d["type"] == "monthly_raw" else "chip-warn"
-            label = "Detected: Monthly Data File ✓" if d["type"] == "monthly_raw" else "Format not recognised — check sheet names"
+            ok = d["type"] == "monthly_raw"
+            icon  = "✓" if ok else "⚠"
+            color = "chip-ok" if ok else "chip-warn"
+            label = "Monthly Data ✓" if ok else "Unrecognised format — needs Zomato, Swiggy, Food Cost, Sale sheets"
             st.markdown(f'<span class="{color}">{icon} {d["name"]} — {label}</span>', unsafe_allow_html=True)
 
-    st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin:1rem 0;'></div>", unsafe_allow_html=True)
 
     # STEP 2 — MONTH
-    st.markdown("""<div style="margin-bottom:0.4rem;">
+    st.markdown("""<div style="margin-bottom:0.5rem;">
         <span class="step-badge">2</span>
-        <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+        <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:#fff;">
         Select Report Month</span>
     </div>""", unsafe_allow_html=True)
-    months = ["December 2025","November 2025","January 2026","February 2026",
-              "March 2026","April 2026","May 2026","June 2026",
-              "July 2026","August 2026","September 2026","October 2026"]
+    months = ["January 2026","February 2026","March 2026","April 2026","May 2026",
+              "June 2026","July 2026","August 2026","September 2026","October 2026",
+              "November 2025","December 2025"]
     sel_month = st.selectbox("Month", months, label_visibility="collapsed")
 
-    st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin:1rem 0;'></div>", unsafe_allow_html=True)
 
     # STEP 3 — HYGIENE
-    st.markdown("""<div style="margin-bottom:0.4rem;">
+    st.markdown("""<div style="margin-bottom:0.5rem;">
         <span class="step-badge">3</span>
-        <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
-        Enter Hygiene Scores</span>
+        <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:#fff;">
+        Hygiene Scores</span>
         <span style="color:#555;font-size:0.8rem;margin-left:8px;">0–5 pts · Based on surprise visit this month</span>
     </div>""", unsafe_allow_html=True)
 
@@ -1059,57 +875,60 @@ with tab_report:
                 tl.split("(")[0].strip(), min_value=0, max_value=5, value=0, step=1, key=f"hyg_{tl}"
             )
 
-    st.markdown("<div style='margin:1.5rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
 
     # STEP 4 — GENERATE
     st.markdown("""<div style="margin-bottom:0.5rem;">
         <span class="step-badge">4</span>
-        <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+        <span style="font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:#fff;">
         Generate Report</span>
     </div>""", unsafe_allow_html=True)
 
-    valid_files = [d for d in detected if d["type"] == "monthly_raw"] if detected else []
+    valid = [d for d in detected if d["type"] == "monthly_raw"] if detected else []
 
-    if not valid_files:
+    if not valid:
         st.markdown("""<div style="background:#1a1a1a;border:1px dashed #333;border-radius:10px;
         padding:1rem;color:#555;font-size:0.85rem;text-align:center;">
-            Upload a monthly data file in Step 1 to enable report generation
+            Upload at least one monthly data file above to enable report generation
         </div>""", unsafe_allow_html=True)
     else:
         if st.button("⚡ Generate Report"):
-            with st.spinner("Processing data... this takes about 10–20 seconds"):
+            with st.spinner("Processing data... please wait"):
                 try:
-                    all_zmt, all_swg, all_fc, all_del = {}, {}, {}, {}
-                    prev_del = {}
-
-                    # Sort files: identify current vs previous month by filename
-                    # Current month = the one matching sel_month, previous = the other
-                    curr_month_key = sel_month[:3].lower()  # e.g. "jan", "dec"
-                    curr_files = [d for d in valid_files if curr_month_key in d["name"].lower()]
-                    prev_files = [d for d in valid_files if curr_month_key not in d["name"].lower()]
-                    # Fallback: if can't distinguish, treat all as current
+                    # Split files: current month vs previous month
+                    curr_key = sel_month[:3].lower()  # "jan", "dec" etc
+                    curr_files = [d for d in valid if curr_key in d["name"].lower()]
+                    prev_files = [d for d in valid if curr_key not in d["name"].lower()]
                     if not curr_files:
-                        curr_files = valid_files
+                        curr_files = valid  # fallback: treat all as current
 
+                    # Load current month
+                    all_zmt, all_swg, all_fc, all_del = {}, {}, {}, {}
                     for d in curr_files:
-                        zmt, swg, fc, delivered = load_monthly_raw(d["wb"])
-                        all_zmt.update(zmt); all_swg.update(swg)
-                        all_fc.update(fc); all_del.update(delivered)
+                        z, s, f, dl = load_monthly_raw(d["wb"])
+                        all_zmt.update(z); all_swg.update(s)
+                        all_fc.update(f);  all_del.update(dl)
 
+                    # Load previous month (for sales scoring)
+                    prev_del = {}
                     for d in prev_files:
-                        _, _, _, prev_delivered = load_monthly_raw(d["wb"])
-                        prev_del.update(prev_delivered)
+                        _, _, _, dl = load_monthly_raw(d["wb"])
+                        prev_del.update(dl)
 
-                    results, disclaimers, flags = calculate_new(
+                    results, disclaimers, flags = calculate(
                         mapping, all_zmt, all_swg, all_fc, hygiene_scores,
                         prev_delivered=prev_del if prev_del else None
                     )
+
+                    # Count how many TLs got sales pts
+                    sales_scored = sum(1 for r in results if r['sales_pts'] == 1)
+                    sales_note = f" · Sales: {sales_scored}/{len(results)} TLs grew" if prev_del else " · Sales: upload prev month for scoring"
+
                     excel_bytes = build_excel(results, disclaimers, flags, sel_month)
                     month_slug  = sel_month.replace(" ", "_")
                     st.session_state.report_bytes = excel_bytes
                     st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
 
-                    # PDF — graceful fallback if reportlab not installed
                     try:
                         pdf_bytes = build_pdf_report(results, flags, disclaimers, sel_month)
                         st.session_state.pdf_bytes = pdf_bytes
@@ -1117,47 +936,44 @@ with tab_report:
                         pdf_ok = True
                     except ModuleNotFoundError:
                         st.session_state.pdf_bytes = None
-                        st.session_state.pdf_name  = None
                         pdf_ok = False
 
                     n_tls     = len(results)
                     n_outlets = sum(r["outlets"] for r in results)
                     n_flags   = len(flags)
-
-                    st.success(f"✓ Report ready — {n_tls} Team Leaders · {n_outlets} Outlets · {n_flags} Flags")
+                    st.success(f"✓ Report ready — {n_tls} TLs · {n_outlets} Outlets · {n_flags} Flags{sales_note}")
                     if not pdf_ok:
-                        st.warning(
-                            "📄 PDF could not be generated — reportlab library is missing from the server. "
-                            "Excel report is ready to download. Ask your developer to add "
-                            "'reportlab>=4.0.0' to requirements.txt and redeploy."
-                        )
+                        st.warning("PDF unavailable — reportlab missing on server. Excel is ready.")
 
                 except Exception as e:
-                    err = str(e)
-                    if "No module named" in err:
-                        st.error(f"⚠️ Missing library: {err}. Ask your developer to check requirements.txt.")
-                    elif "sheet" in err.lower() or "worksheet" in err.lower():
-                        st.error("⚠️ Could not read the uploaded file. Make sure it contains Zomato, Swiggy, and Food Cost sheets.")
+                    if "module" in str(e).lower():
+                        st.error(f"Missing library: {e}. Check requirements.txt.")
+                    elif "sheet" in str(e).lower():
+                        st.error("Could not read file. Check sheet names: needs Zomato, Swiggy, Food Cost, Sale.")
                     else:
-                        st.error(f"⚠️ Something went wrong: {err}")
+                        st.error(f"Error: {e}")
                     import traceback; st.code(traceback.format_exc())
 
+    # DOWNLOADS
     if st.session_state.report_bytes:
         st.markdown("<hr class='divider'>", unsafe_allow_html=True)
         st.markdown('<div class="section-label">Download Reports</div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         with c1:
-            st.download_button("📥 Download Excel Report",
-                data=st.session_state.report_bytes, file_name=st.session_state.report_name,
+            st.download_button("📥 Download Excel",
+                data=st.session_state.report_bytes,
+                file_name=st.session_state.report_name,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         with c2:
             if st.session_state.pdf_bytes:
-                st.download_button("📄 Download PDF Summary",
-                    data=st.session_state.pdf_bytes, file_name=st.session_state.pdf_name,
+                st.download_button("📄 Download PDF",
+                    data=st.session_state.pdf_bytes,
+                    file_name=st.session_state.pdf_name,
                     mime="application/pdf")
             else:
-                st.markdown("""<div style="background:#1a1a1a;border:1px dashed #333;border-radius:8px;
-                padding:0.6rem 1rem;color:#555;font-size:0.82rem;text-align:center;margin-top:4px;">
+                st.markdown("""<div style="background:#1a1a1a;border:1px dashed #333;
+                border-radius:8px;padding:0.6rem 1rem;color:#555;font-size:0.82rem;
+                text-align:center;margin-top:4px;">
                     📄 PDF unavailable — reportlab missing on server
                 </div>""", unsafe_allow_html=True)
 
@@ -1166,64 +982,55 @@ with tab_report:
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_mapping:
 
-    tl_count  = len(mapping)
-    out_count = sum(len(v) for v in mapping.values())
-
     st.markdown(f"""
     <div class="card">
         <div class="section-label">Current Mapping</div>
-        <span class="status-ok">✓ {tl_count} Team Leaders · {out_count} Outlets</span>
+        <span class="status-ok">✓ {len(tl_names)} Team Leaders · {total_outlets} Outlets</span>
         <div style="color:#555;font-size:0.78rem;margin-top:0.3rem;">
-            Mapping is built into the app and survives page refreshes.
-            Changes made here last for this session only.
-            To make permanent changes, contact your developer to update the app file.
+            Mapping is built into the app. Changes here last this session only.
+            For permanent changes, send outlet details to your developer.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # Show all TLs and outlets
     for tl, outlets in sorted(mapping.items()):
-        with st.expander(f"{tl.split('(')[0].strip()}  —  {len(outlets)} outlets"):
+        with st.expander(f"{tl}  —  {len(outlets)} outlets"):
             for o in outlets:
                 st.markdown(
                     f"**{o['outlet']}** &nbsp;·&nbsp; POS: `{o['pos']}` "
-                    f"&nbsp;·&nbsp; Zomato: `{o['zmt_rk']}` / `{o['zmt_rf']}` "
-                    f"&nbsp;·&nbsp; Swiggy: `{o['swg_rk']}` / `{o['swg_rf']}`"
+                    f"&nbsp;·&nbsp; Z: `{o['zmt_rk']}` / `{o['zmt_rf']}` "
+                    f"&nbsp;·&nbsp; S: `{o['swg_rk']}` / `{o['swg_rf']}`"
                 )
 
     st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
 
-    # ADD NEW TL
+    # Add new TL
     st.markdown("""<div style="margin-bottom:0.4rem;">
         <span class="step-badge">+</span>
         <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
         Add New Team Leader</span>
     </div>""", unsafe_allow_html=True)
-    new_tl_name = st.text_input("New Team Leader Name", placeholder="e.g. Rajesh Sharma", key="new_tl_name")
+    new_tl = st.text_input("Team Leader Name", placeholder="e.g. Rajesh Sharma", key="new_tl")
     if st.button("➕ Add Team Leader"):
-        if new_tl_name and new_tl_name.strip() not in mapping:
-            st.session_state.mapping[new_tl_name.strip()] = []
-            st.session_state.mapping_edited = True
-            st.success(f"✓ Team Leader '{new_tl_name.strip()}' added. Now add outlets to them below.")
+        if new_tl.strip() and new_tl.strip() not in mapping:
+            st.session_state.mapping[new_tl.strip()] = []
+            st.success(f"✓ Added {new_tl.strip()}. Now add outlets to them below.")
             st.rerun()
-        elif new_tl_name.strip() in mapping:
+        elif new_tl.strip() in mapping:
             st.warning("That Team Leader already exists.")
         else:
             st.warning("Enter a name first.")
 
-    st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin:1rem 0;'></div>", unsafe_allow_html=True)
 
-    # ADD NEW OUTLET
+    # Add new outlet
     st.markdown("""<div style="margin-bottom:0.4rem;">
         <span class="step-badge">+</span>
         <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
         Add New Outlet</span>
-        <span style="color:#555;font-size:0.8rem;margin-left:8px;">
-        Only needed when a new outlet opens or changes TL</span>
     </div>""", unsafe_allow_html=True)
 
-    tl_options = sorted(mapping.keys())
-    sel_tl = st.selectbox("Assign to Team Leader", tl_options, key="add_tl")
+    sel_tl = st.selectbox("Assign to Team Leader", sorted(mapping.keys()), key="add_tl")
     c1, c2 = st.columns(2)
     with c1:
         new_outlet = st.text_input("Outlet Name", placeholder="e.g. Sector 62, Noida", key="new_outlet")
@@ -1233,7 +1040,7 @@ with tab_mapping:
     with c2:
         new_srk    = st.text_input("Swiggy ID (RollsKing)", placeholder="e.g. 313666", key="new_srk")
         new_srf    = st.text_input("Swiggy ID (Rolling Fresh)", placeholder="e.g. 783919", key="new_srf")
-        st.caption("POS ID and Outlet Name are required. IDs are found on Zomato/Swiggy partner portals.")
+        st.caption("Outlet Name and POS ID are required.")
 
     if st.button("➕ Add Outlet"):
         if new_outlet and new_pos:
@@ -1244,8 +1051,7 @@ with tab_mapping:
                 "swg_rk": safe_id(new_srk) if new_srk else None,
                 "swg_rf": safe_id(new_srf) if new_srf else None,
             })
-            st.session_state.mapping_edited = True
-            st.success(f"✓ {new_outlet} added under {sel_tl.split('(')[0].strip()}")
+            st.success(f"✓ {new_outlet} added under {sel_tl}")
             st.rerun()
         else:
             st.warning("Outlet Name and POS ID are required.")
