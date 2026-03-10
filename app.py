@@ -822,143 +822,224 @@ st.markdown('<div class="main-subtitle">Monthly Performance Report Generator</di
 tab_report, tab_mapping = st.tabs(["📊  Generate Report", "🗂️  Manage Mapping"])
 
 # ════════════════════════════════════════════════════════════════════════════════
+# ════════════════════════════════════════════════════════════════════════════════
 # TAB 1 — GENERATE REPORT
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_report:
 
-    # Check mapping
-    if not st.session_state.mapping:
-        st.markdown('<div class="card-gold">', unsafe_allow_html=True)
-        st.warning("⚠️ No outlet mapping loaded. Go to **Manage Mapping** tab to upload your mapping file first.")
-        st.markdown('</div>', unsafe_allow_html=True)
-        st.stop()
+    mapping_loaded = bool(st.session_state.mapping)
 
-    mapping = st.session_state.mapping
-    tl_names = sorted(mapping.keys())
-    total_outlets = sum(len(v) for v in mapping.values())
+    if not mapping_loaded:
+        st.markdown("""
+        <div class="card-gold">
+            <div class="section-label">One-Time Setup Required</div>
+            <p style="color:#f0f0f0; font-size:0.92rem; margin:0.5rem 0 0.3rem;">
+                Before generating reports, the system needs to know which outlets belong
+                to which Team Leader. This is a
+                <strong style="color:#e8a020;">one-time setup</strong> — done once,
+                updated only when outlets or managers change.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    st.markdown(f"""
-    <div class="card">
-        <div class="section-label">Mapping Loaded</div>
-        <span class="status-ok">✓ {len(tl_names)} Team Leaders · {total_outlets} Outlets</span>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown("""
+        <div class="card">
+            <div class="section-label">How to Get Started</div>
+            <div style="color:#ccc; font-size:0.88rem; line-height:2.2rem;">
+                <div><span style="background:#e8a020;color:#000;border-radius:50%;width:22px;height:22px;
+                display:inline-block;text-align:center;line-height:22px;font-weight:800;
+                font-size:0.8rem;margin-right:10px;">1</span>
+                Click the <strong style="color:#e8a020;">Manage Mapping</strong> tab above</div>
+                <div><span style="background:#e8a020;color:#000;border-radius:50%;width:22px;height:22px;
+                display:inline-block;text-align:center;line-height:22px;font-weight:800;
+                font-size:0.8rem;margin-right:10px;">2</span>
+                Upload <strong style="color:#e8a020;">Nov_Month_Data.xlsx</strong>
+                (or any monthly file containing the mapping sheet)</div>
+                <div><span style="background:#e8a020;color:#000;border-radius:50%;width:22px;height:22px;
+                display:inline-block;text-align:center;line-height:22px;font-weight:800;
+                font-size:0.8rem;margin-right:10px;">3</span>
+                Return here and follow the 4 steps to generate your report</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    # ── STEP 1: UPLOAD FILES ─────────────────────────────────────────────────
-    st.markdown('<div class="section-label"><span class="step-badge">1</span>Upload Monthly Data Files</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.caption("Upload your monthly file(s). Each file should contain: Zomato raw data, Swiggy raw data, Food Cost Compile Data, and Sale raw data.")
+        st.markdown("""
+        <div class="card">
+            <div class="section-label">What You Will Need Every Month</div>
+            <div style="color:#ccc; font-size:0.88rem; line-height:2rem;">
+                <div>📁 &nbsp;<strong style="color:#fff;">Monthly Data File</strong>
+                &nbsp;—&nbsp; One .xlsx file with Zomato, Swiggy, Food Cost and Sale sheets</div>
+                <div>✏️ &nbsp;<strong style="color:#fff;">Hygiene Scores</strong>
+                &nbsp;—&nbsp; Manually enter surprise visit scores for each TL</div>
+                <div>⬇️ &nbsp;<strong style="color:#fff;">Download Reports</strong>
+                &nbsp;—&nbsp; Excel (detailed) + PDF (management summary) generated instantly</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    uploaded_files = st.file_uploader(
-        "Drop files here",
-        type=["xlsx"],
-        accept_multiple_files=True,
-        label_visibility="collapsed"
-    )
-
-    detected = []
-    if uploaded_files:
-        for f in uploaded_files:
-            fbytes = f.read()
-            ftype, wb = detect_file_type(fbytes, f.name)
-            detected.append({'name': f.name, 'type': ftype, 'bytes': fbytes, 'wb': wb})
-
-        for d in detected:
-            icon  = "✓" if d['type'] == 'monthly_raw' else "?"
-            color = "chip-ok" if d['type'] == 'monthly_raw' else "chip-warn"
-            label = "Monthly Data" if d['type'] == 'monthly_raw' else "Unknown Format"
-            st.markdown(f'<span class="{color}">{icon} {d["name"]} — {label}</span>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── STEP 2: SELECT MONTH ─────────────────────────────────────────────────
-    st.markdown('<div class="section-label"><span class="step-badge">2</span>Select Month</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    months = ["January 2026","February 2026","March 2026","April 2026","May 2026",
-              "June 2026","July 2026","August 2026","September 2026","October 2025",
-              "November 2025","December 2025"]
-    sel_month = st.selectbox("Month", months, label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── STEP 3: HYGIENE SCORES ───────────────────────────────────────────────
-    st.markdown('<div class="section-label"><span class="step-badge">3</span>Hygiene Scores (Manual)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.caption("Enter hygiene inspection score for each Team Leader this month.")
-
-    hygiene_scores = {}
-    cols = st.columns(2)
-    for i, tl in enumerate(tl_names):
-        with cols[i % 2]:
-            short = tl.split("(")[0].strip()
-            hygiene_scores[tl] = st.number_input(short, min_value=0, max_value=5,
-                                                  value=0, step=1, key=f"hyg_{tl}")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # ── STEP 4: GENERATE ─────────────────────────────────────────────────────
-    st.markdown('<div class="section-label"><span class="step-badge">4</span>Generate Report</div>', unsafe_allow_html=True)
-
-    valid_files = [d for d in detected if d['type'] == 'monthly_raw'] if detected else []
-
-    if not valid_files:
-        st.info("Upload at least one monthly data file above to generate the report.")
     else:
-        if st.button("⚡ Generate Report"):
-            with st.spinner("Processing data and building report..."):
-                try:
-                    # Merge data from all uploaded monthly files
-                    all_zmt, all_swg, all_fc = {}, {}, {}
-                    for d in valid_files:
-                        zmt, swg, fc = load_monthly_raw(d['wb'])
-                        all_zmt.update(zmt)
-                        all_swg.update(swg)
-                        all_fc.update(fc)
+        mapping = st.session_state.mapping
+        tl_names = sorted(mapping.keys())
+        total_outlets = sum(len(v) for v in mapping.values())
 
-                    results, disclaimers, flags = calculate_new(
-                        mapping, all_zmt, all_swg, all_fc, hygiene_scores
-                    )
+        st.markdown(f"""
+        <div class="card">
+            <div class="section-label">Status</div>
+            <span class="status-ok">✓ Mapping Active &nbsp;·&nbsp; {len(tl_names)} Team Leaders &nbsp;·&nbsp; {total_outlets} Outlets</span>
+            <div style="color:#555; font-size:0.78rem; margin-top:0.4rem;">
+                Need to add or change an outlet? Go to the <strong>Manage Mapping</strong> tab.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-                    excel_bytes = build_excel(results, disclaimers, flags, sel_month)
-                    pdf_bytes   = build_pdf_report(results, flags, disclaimers, sel_month)
-                    month_slug  = sel_month.replace(" ", "_")
+        # STEP 1
+        st.markdown("""<div style="margin-bottom:0.4rem;">
+            <span class="step-badge">1</span>
+            <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+            Upload This Month's Data File</span>
+            <span style="color:#555;font-size:0.8rem;margin-left:8px;">
+            Must contain: Zomato, Swiggy, Food Cost and Sale sheets</span>
+        </div>""", unsafe_allow_html=True)
 
-                    st.session_state.report_bytes = excel_bytes
-                    st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
-                    st.session_state.pdf_bytes    = pdf_bytes
-                    st.session_state.pdf_name     = f"RollsKing_Report_{month_slug}.pdf"
+        uploaded_files = st.file_uploader(
+            "Drop monthly .xlsx file(s) here",
+            type=["xlsx"],
+            accept_multiple_files=True
+        )
 
-                    st.success(f"✓ Report generated — {len(results)} TLs, {sum(r['outlets'] for r in results)} outlets, {len(flags)} flags")
+        detected = []
+        if uploaded_files:
+            for f in uploaded_files:
+                fbytes = f.read()
+                ftype, wb = detect_file_type(fbytes, f.name)
+                detected.append({"name": f.name, "type": ftype, "bytes": fbytes, "wb": wb})
+            for d in detected:
+                icon  = "✓" if d["type"] == "monthly_raw" else "⚠"
+                color = "chip-ok" if d["type"] == "monthly_raw" else "chip-warn"
+                label = "Detected: Monthly Data File ✓" if d["type"] == "monthly_raw" else "Format not recognised — check sheet names"
+                st.markdown(f'<span class="{color}">{icon} {d["name"]} — {label}</span>', unsafe_allow_html=True)
 
-                except Exception as e:
-                    st.error(f"Error generating report: {e}")
-                    import traceback; st.code(traceback.format_exc())
+        st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
 
-    # ── DOWNLOADS ────────────────────────────────────────────────────────────
-    if st.session_state.report_bytes:
-        st.markdown("<hr class='divider'>", unsafe_allow_html=True)
-        st.markdown('<div class="section-label">Download Reports</div>', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.download_button("📥 Download Excel",
-                data=st.session_state.report_bytes,
-                file_name=st.session_state.report_name,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        with c2:
-            st.download_button("📄 Download PDF",
-                data=st.session_state.pdf_bytes,
-                file_name=st.session_state.pdf_name,
-                mime="application/pdf")
+        # STEP 2
+        st.markdown("""<div style="margin-bottom:0.4rem;">
+            <span class="step-badge">2</span>
+            <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+            Select Report Month</span>
+        </div>""", unsafe_allow_html=True)
+
+        months = ["December 2025","November 2025","January 2026","February 2026",
+                  "March 2026","April 2026","May 2026","June 2026",
+                  "July 2026","August 2026","September 2026","October 2026"]
+        sel_month = st.selectbox("Month", months, label_visibility="collapsed")
+
+        st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+
+        # STEP 3
+        st.markdown("""<div style="margin-bottom:0.4rem;">
+            <span class="step-badge">3</span>
+            <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+            Enter Hygiene Scores</span>
+            <span style="color:#555;font-size:0.8rem;margin-left:8px;">0–5 pts · Based on surprise visit this month</span>
+        </div>""", unsafe_allow_html=True)
+
+        hygiene_scores = {}
+        cols = st.columns(2)
+        for i, tl in enumerate(tl_names):
+            with cols[i % 2]:
+                short = tl.split("(")[0].strip()
+                hygiene_scores[tl] = st.number_input(short, min_value=0, max_value=5, value=0, step=1, key=f"hyg_{tl}")
+
+        st.markdown("<div style='margin:1.5rem 0;'></div>", unsafe_allow_html=True)
+
+        # STEP 4
+        st.markdown("""<div style="margin-bottom:0.5rem;">
+            <span class="step-badge">4</span>
+            <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+            Generate Report</span>
+        </div>""", unsafe_allow_html=True)
+
+        valid_files = [d for d in detected if d["type"] == "monthly_raw"] if detected else []
+
+        if not valid_files:
+            st.markdown("""<div style="background:#1a1a1a;border:1px dashed #333;border-radius:10px;
+            padding:1rem;color:#555;font-size:0.85rem;text-align:center;">
+                Upload a monthly data file in Step 1 to enable report generation
+            </div>""", unsafe_allow_html=True)
+        else:
+            if st.button("⚡ Generate Report"):
+                with st.spinner("Processing data and building report..."):
+                    try:
+                        all_zmt, all_swg, all_fc = {}, {}, {}
+                        for d in valid_files:
+                            zmt, swg, fc = load_monthly_raw(d["wb"])
+                            all_zmt.update(zmt)
+                            all_swg.update(swg)
+                            all_fc.update(fc)
+
+                        results, disclaimers, flags = calculate_new(
+                            mapping, all_zmt, all_swg, all_fc, hygiene_scores
+                        )
+
+                        excel_bytes = build_excel(results, disclaimers, flags, sel_month)
+                        pdf_bytes   = build_pdf_report(results, flags, disclaimers, sel_month)
+                        month_slug  = sel_month.replace(" ", "_")
+
+                        st.session_state.report_bytes = excel_bytes
+                        st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
+                        st.session_state.pdf_bytes    = pdf_bytes
+                        st.session_state.pdf_name     = f"RollsKing_Report_{month_slug}.pdf"
+
+                        st.success(
+                            f"✓ Report ready — {len(results)} Team Leaders · "
+                            f"{sum(r['outlets'] for r in results)} Outlets · "
+                            f"{len(flags)} Flags"
+                        )
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        import traceback; st.code(traceback.format_exc())
+
+        if st.session_state.report_bytes:
+            st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+            st.markdown('<div class="section-label">Download Reports</div>', unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                st.download_button("📥 Download Excel Report",
+                    data=st.session_state.report_bytes,
+                    file_name=st.session_state.report_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            with c2:
+                st.download_button("📄 Download PDF Summary",
+                    data=st.session_state.pdf_bytes,
+                    file_name=st.session_state.pdf_name,
+                    mime="application/pdf")
 
 # ════════════════════════════════════════════════════════════════════════════════
 # TAB 2 — MANAGE MAPPING
 # ════════════════════════════════════════════════════════════════════════════════
 with tab_mapping:
-    st.markdown('<div class="section-label">Outlet & Team Leader Mapping</div>', unsafe_allow_html=True)
 
-    # Upload mapping file
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.markdown("**Upload Mapping File** — Only needed once. Re-upload only when outlets or TLs change.")
-    st.caption("Expected format: Sheet named 'Sheet1' with columns: Subzone, POS ID, Zone, ASM, Zomato ID (RK), Zomato ID (RF), Swiggy ID (RK), Swiggy ID (RF)")
-    map_file = st.file_uploader("Upload mapping file", type=["xlsx"], key="map_uploader")
+    st.markdown("""
+    <div class="card">
+        <div class="section-label">What is Mapping?</div>
+        <p style="color:#ccc;font-size:0.88rem;line-height:1.7rem;margin:0.3rem 0 0;">
+            Mapping tells the system which outlets belong to which Team Leader,
+            and links each outlet to its Zomato and Swiggy restaurant IDs.
+            <strong style="color:#e8a020;">Upload this once</strong> — it stays saved
+            until you update it. Re-upload only when outlets open, close, or TLs change.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""<div style="margin-bottom:0.4rem;">
+        <span class="step-badge">1</span>
+        <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+        Upload Mapping File</span>
+        <span style="color:#555;font-size:0.8rem;margin-left:8px;">
+        Use Nov_Month_Data.xlsx · Sheet must be named 'Sheet1'</span>
+    </div>""", unsafe_allow_html=True)
+
+    map_file = st.file_uploader("Upload mapping file (.xlsx)", type=["xlsx"], key="map_uploader", label_visibility="collapsed")
     if map_file:
         mb = map_file.read()
         ftype, wb = detect_file_type(mb, map_file.name)
@@ -969,50 +1050,75 @@ with tab_mapping:
             else:
                 st.session_state.mapping = mapping_data
                 total = sum(len(v) for v in mapping_data.values())
-                st.success(f"✓ Mapping loaded: {len(mapping_data)} Team Leaders, {total} Outlets")
-    st.markdown('</div>', unsafe_allow_html=True)
+                st.success(f"✓ Mapping saved — {len(mapping_data)} Team Leaders · {total} Outlets · Go to Generate Report tab to continue")
 
-    # Show current mapping
+    st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+
     if st.session_state.mapping:
-        st.markdown('<div class="section-label">Current Mapping</div>', unsafe_allow_html=True)
-        for tl, outlets in sorted(st.session_state.mapping.items()):
-            with st.expander(f"{tl.split('(')[0].strip()} — {len(outlets)} outlets"):
-                for o in outlets:
-                    st.markdown(f"- **{o['outlet']}** · POS: `{o['pos']}` · Z: `{o['zmt_rk']}`/`{o['zmt_rf']}` · S: `{o['swg_rk']}`/`{o['swg_rf']}`")
+        tl_count  = len(st.session_state.mapping)
+        out_count = sum(len(v) for v in st.session_state.mapping.values())
 
-        # Manual add outlet
-        st.markdown('<div class="section-label">Add / Update an Outlet</div>', unsafe_allow_html=True)
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="card">
+            <div class="section-label">Current Mapping</div>
+            <span class="status-ok">✓ {tl_count} Team Leaders · {out_count} Outlets loaded</span>
+        </div>""", unsafe_allow_html=True)
+
+        for tl, outlets in sorted(st.session_state.mapping.items()):
+            short_tl = tl.split("(")[0].strip()
+            with st.expander(f"{short_tl}  —  {len(outlets)} outlets"):
+                for o in outlets:
+                    st.markdown(
+                        f"**{o['outlet']}** &nbsp;·&nbsp; POS: `{o['pos']}` "
+                        f"&nbsp;·&nbsp; Zomato: `{o['zmt_rk']}` / `{o['zmt_rf']}` "
+                        f"&nbsp;·&nbsp; Swiggy: `{o['swg_rk']}` / `{o['swg_rf']}`"
+                    )
+
+        st.markdown("<div style='margin:1.2rem 0;'></div>", unsafe_allow_html=True)
+
+        st.markdown("""<div style="margin-bottom:0.4rem;">
+            <span class="step-badge">2</span>
+            <span style="font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;color:#fff;">
+            Add a New Outlet</span>
+            <span style="color:#555;font-size:0.8rem;margin-left:8px;">
+            Only needed when a new outlet opens or changes TL</span>
+        </div>""", unsafe_allow_html=True)
+
         tl_options = sorted(st.session_state.mapping.keys())
-        sel_tl = st.selectbox("Team Leader", tl_options, key="add_tl")
+        sel_tl = st.selectbox("Assign to Team Leader", tl_options, key="add_tl")
         c1, c2 = st.columns(2)
         with c1:
-            new_outlet = st.text_input("Outlet Name (Subzone)", key="new_outlet")
-            new_pos    = st.text_input("POS ID", key="new_pos")
-            new_zrk    = st.text_input("Zomato ID (RK)", key="new_zrk")
-            new_zrf    = st.text_input("Zomato ID (RF)", key="new_zrf")
+            new_outlet = st.text_input("Outlet Name", placeholder="e.g. Sector 62, Noida", key="new_outlet")
+            new_pos    = st.text_input("POS ID", placeholder="e.g. 23687", key="new_pos")
+            new_zrk    = st.text_input("Zomato ID (RollsKing)", placeholder="e.g. 19476740", key="new_zrk")
+            new_zrf    = st.text_input("Zomato ID (Rolling Fresh)", placeholder="e.g. 20884624", key="new_zrf")
         with c2:
-            new_srk    = st.text_input("Swiggy ID (RK)", key="new_srk")
-            new_srf    = st.text_input("Swiggy ID (RF)", key="new_srf")
+            new_srk    = st.text_input("Swiggy ID (RollsKing)", placeholder="e.g. 313666", key="new_srk")
+            new_srf    = st.text_input("Swiggy ID (Rolling Fresh)", placeholder="e.g. 783919", key="new_srf")
+            st.caption("Outlet Name and POS ID are required. IDs can be found on Zomato/Swiggy partner portals.")
 
-        if st.button("Add Outlet to Mapping"):
+        if st.button("➕ Add Outlet to Mapping"):
             if new_outlet and new_pos:
                 st.session_state.mapping[sel_tl].append({
-                    'outlet': new_outlet.strip(),
-                    'pos': safe_id(new_pos),
-                    'zmt_rk': safe_id(new_zrk) if new_zrk else None,
-                    'zmt_rf': safe_id(new_zrf) if new_zrf else None,
-                    'swg_rk': safe_id(new_srk) if new_srk else None,
-                    'swg_rf': safe_id(new_srf) if new_srf else None,
+                    "outlet": new_outlet.strip(), "pos": safe_id(new_pos),
+                    "zmt_rk": safe_id(new_zrk) if new_zrk else None,
+                    "zmt_rf": safe_id(new_zrf) if new_zrf else None,
+                    "swg_rk": safe_id(new_srk) if new_srk else None,
+                    "swg_rf": safe_id(new_srf) if new_srf else None,
                 })
-                st.success(f"✓ Added {new_outlet} to {sel_tl.split('(')[0].strip()}")
+                st.success(f"✓ {new_outlet} added under {sel_tl.split('(')[0].strip()}")
                 st.rerun()
             else:
                 st.warning("Outlet Name and POS ID are required.")
-        st.markdown('</div>', unsafe_allow_html=True)
-
     else:
-        st.info("No mapping loaded yet. Upload your mapping file above.")
+        st.markdown("""
+        <div class="card">
+            <div class="section-label">No Mapping Loaded Yet</div>
+            <p style="color:#888;font-size:0.88rem;margin:0.3rem 0 0;">
+                Upload the mapping file above to get started. Once loaded, it will remain
+                active for all reports until you update it.
+            </p>
+        </div>""", unsafe_allow_html=True)
 
 # ── FOOTER ────────────────────────────────────────────────────────────────────
 st.markdown("""
