@@ -409,6 +409,26 @@ def calculate(mapping, zmt, swg, fc, hygiene_scores, prev_delivered=None):
     return results, disclaimers, flags
 
 
+# ── EXCEL STYLE CONSTANTS ────────────────────────────────────────────────────
+TIER_CLR = {
+    "Platinum": ("1F1F1F", "FFD700"), "Gold": ("1F1F1F", "FFA500"),
+    "Silver":   ("1F1F1F", "C0C0C0"), "Bronze": ("FFFFFF", "8B4513")
+}
+CLR = {"hd": "1F2D3D", "hm": "2E4057", "wh": "FFFFFF", "lg": "F2F2F2",
+       "mg": "D9D9D9", "gn": "C6EFCE", "rd": "FFC7CE", "yw": "FFF2CC"}
+
+def bdr():
+    s = Side(style="thin", color="BFBFBF")
+    return Border(left=s, right=s, top=s, bottom=s)
+
+def hrow(ws, r, cols, bg, fg="FFFFFF", sz=9):
+    for c, t in enumerate(cols, 1):
+        cell = ws.cell(row=r, column=c, value=t)
+        cell.font = Font(bold=True, color=fg, size=sz, name="Arial")
+        cell.fill = PatternFill("solid", start_color=bg)
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = bdr()
+
 def build_excel(results, disclaimers, flags, month):
     wb = openpyxl.Workbook()
 
