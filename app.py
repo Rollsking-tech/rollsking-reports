@@ -5,8 +5,9 @@ from openpyxl.utils import get_column_letter
 from difflib import SequenceMatcher
 from datetime import datetime
 import io
+import json
 
-# ── PAGE CONFIG ──────────────────────────────────────────────────────────────
+# ── PAGE CONFIG ───────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="RollsKing Reports",
     page_icon="🍱",
@@ -19,142 +20,92 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-}
-
-.stApp {
-    background: #0f0f0f;
-    color: #f0f0f0;
-}
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+.stApp { background: #0f0f0f; color: #f0f0f0; }
 
 .main-title {
     font-family: 'Syne', sans-serif;
-    font-size: 2.6rem;
-    font-weight: 800;
-    color: #ffffff;
-    letter-spacing: -1px;
-    line-height: 1.1;
-    margin-bottom: 0.2rem;
+    font-size: 2.4rem; font-weight: 800;
+    color: #ffffff; letter-spacing: -1px;
+    line-height: 1.1; margin-bottom: 0.2rem;
 }
-
 .main-subtitle {
     font-family: 'DM Sans', sans-serif;
-    font-size: 1rem;
-    color: #888;
-    font-weight: 300;
-    margin-bottom: 2.5rem;
+    font-size: 0.95rem; color: #888;
+    font-weight: 300; margin-bottom: 2rem;
 }
-
 .section-label {
     font-family: 'Syne', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #e8a020;
-    margin-bottom: 0.5rem;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 2.5px; text-transform: uppercase;
+    color: #e8a020; margin-bottom: 0.4rem;
 }
-
 .card {
-    background: #1a1a1a;
-    border: 1px solid #2a2a2a;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.2rem;
+    background: #1a1a1a; border: 1px solid #2a2a2a;
+    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
 }
-
-.status-ok {
-    color: #4ade80;
-    font-size: 0.85rem;
-    font-weight: 500;
+.card-gold {
+    background: #1a1a1a; border: 1px solid #e8a020;
+    border-radius: 14px; padding: 1.5rem; margin-bottom: 1.2rem;
 }
-
-.status-warn {
-    color: #fbbf24;
-    font-size: 0.85rem;
-    font-weight: 500;
+.status-ok  { color: #4ade80; font-size: 0.82rem; font-weight: 500; }
+.status-warn{ color: #fbbf24; font-size: 0.82rem; font-weight: 500; }
+.status-err { color: #f87171; font-size: 0.82rem; font-weight: 500; }
+.chip-ok  { display:inline-block; background:#052e16; color:#4ade80; border-radius:20px;
+             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
+.chip-warn{ display:inline-block; background:#2a1f00; color:#fbbf24; border-radius:20px;
+             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
+.chip-miss{ display:inline-block; background:#2a0f0f; color:#f87171; border-radius:20px;
+             padding:2px 10px; font-size:0.75rem; font-weight:600; margin:2px; }
+.step-badge {
+    display:inline-block; background:#e8a020; color:#0f0f0f;
+    border-radius:50%; width:26px; height:26px; text-align:center;
+    line-height:26px; font-weight:800; font-size:0.85rem;
+    font-family:'Syne',sans-serif; margin-right:8px;
 }
-
-.status-err {
-    color: #f87171;
-    font-size: 0.85rem;
-    font-weight: 500;
-}
-
-.divider {
-    border: none;
-    border-top: 1px solid #2a2a2a;
-    margin: 1.5rem 0;
-}
+.divider { border:none; border-top:1px solid #2a2a2a; margin:1.5rem 0; }
 
 /* Streamlit overrides */
 .stFileUploader > div {
     background: #1a1a1a !important;
-    border: 1.5px dashed #333 !important;
-    border-radius: 10px !important;
+    border: 1.5px dashed #3a3a3a !important;
+    border-radius: 12px !important;
 }
-.stFileUploader > div:hover {
-    border-color: #e8a020 !important;
-}
+.stFileUploader > div:hover { border-color: #e8a020 !important; }
 .stNumberInput > div > div > input,
 .stTextInput > div > div > input,
 .stSelectbox > div > div {
-    background: #1a1a1a !important;
-    border: 1px solid #333 !important;
-    color: #f0f0f0 !important;
-    border-radius: 8px !important;
+    background: #1a1a1a !important; border: 1px solid #333 !important;
+    color: #f0f0f0 !important; border-radius: 8px !important;
 }
 .stButton > button {
-    background: #e8a020 !important;
-    color: #0f0f0f !important;
-    font-family: 'Syne', sans-serif !important;
-    font-weight: 700 !important;
-    font-size: 1rem !important;
-    border: none !important;
-    border-radius: 8px !important;
-    padding: 0.6rem 2rem !important;
-    letter-spacing: 0.5px !important;
-    width: 100% !important;
+    background: #e8a020 !important; color: #0f0f0f !important;
+    font-family: 'Syne', sans-serif !important; font-weight: 700 !important;
+    font-size: 1rem !important; border: none !important;
+    border-radius: 8px !important; padding: 0.6rem 2rem !important;
+    letter-spacing: 0.5px !important; width: 100% !important;
     transition: all 0.2s !important;
 }
-.stButton > button:hover {
-    background: #f5b535 !important;
-    transform: translateY(-1px) !important;
-}
+.stButton > button:hover { background: #f5b535 !important; transform: translateY(-1px) !important; }
 .stPasswordInput > div > div > input {
-    background: #1a1a1a !important;
-    border: 1px solid #333 !important;
-    color: #f0f0f0 !important;
-    border-radius: 8px !important;
-}
-.stSuccess {
-    background: #0f2a1a !important;
-    border: 1px solid #1a5c33 !important;
-    border-radius: 8px !important;
-}
-.stError {
-    background: #2a0f0f !important;
-    border: 1px solid #5c1a1a !important;
-    border-radius: 8px !important;
-}
-.stWarning {
-    background: #2a200f !important;
-    border: 1px solid #5c3d0a !important;
-    border-radius: 8px !important;
+    background: #1a1a1a !important; border: 1px solid #333 !important;
+    color: #f0f0f0 !important; border-radius: 8px !important;
 }
 div[data-testid="stExpander"] {
-    background: #1a1a1a !important;
-    border: 1px solid #2a2a2a !important;
+    background: #1a1a1a !important; border: 1px solid #2a2a2a !important;
     border-radius: 10px !important;
 }
+.stTabs [data-baseweb="tab-list"] { background: #1a1a1a !important; border-radius: 10px !important; }
+.stTabs [data-baseweb="tab"] { color: #888 !important; }
+.stTabs [aria-selected="true"] { color: #e8a020 !important; }
+[data-testid="stMetricValue"] { color: #e8a020 !important; font-family: 'Syne', sans-serif !important; }
 </style>
 """, unsafe_allow_html=True)
 
 # ── PASSWORD ──────────────────────────────────────────────────────────────────
-PASSWORD = "rollsking2025"
+APP_PASSWORD = "rollsking2025"
 
-# ── CALCULATOR HELPERS ────────────────────────────────────────────────────────
+# ── HELPERS ───────────────────────────────────────────────────────────────────
 def safe_id(v):
     try:
         s = str(v).strip()
@@ -170,23 +121,24 @@ def safe_f(v, d=0.0):
 def parse_pct(v):
     if v is None: return None
     try:
-        f = float(str(v).strip().replace('%', ''))
+        f = float(str(v).strip().replace('%','').replace('₹',''))
         return f if f > 1 else f * 100
     except: return None
 
 def parse_min(v):
     if v is None: return None
-    try: return float(str(v).strip().replace(' min', '').replace('min', ''))
+    try: return float(str(v).strip().replace(' min','').replace('min',''))
     except: return None
 
 def fuzzy(name, candidates, threshold=0.45):
     best, score = None, 0
     for c in candidates:
-        s = SequenceMatcher(None, name.lower().strip(), c.lower().strip()).ratio()
+        s = SequenceMatcher(None, str(name).lower().strip(), str(c).lower().strip()).ratio()
         if s > score: score, best = s, c
     return best if score >= threshold else None
 
 def score_c(pct):
+    if pct is None: return 0
     if pct <= 1: return 4
     if pct <= 2: return 3
     if pct <= 3: return 1
@@ -197,98 +149,142 @@ def score_tier(avg):
         if lo <= avg < hi: return name
     return "Platinum" if avg >= 8 else "Bronze"
 
-# ── DATA LOADER ───────────────────────────────────────────────────────────────
-def load_all_data(raw_bytes, biz_bytes, hygiene_scores):
-    wb = openpyxl.load_workbook(io.BytesIO(raw_bytes))
-    wb2 = openpyxl.load_workbook(io.BytesIO(biz_bytes)) if biz_bytes else None
+# ── DETECT FILE TYPE ──────────────────────────────────────────────────────────
+def detect_file_type(file_bytes, filename):
+    """Auto-detect what kind of file was uploaded based on sheet names and content."""
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+        sheets = [s.lower() for s in wb.sheetnames]
 
-    # Mapping
+        # New monthly format: has zomato raw data + swiggy raw data + food cost
+        has_zomato_raw = any('zomato' in s and ('raw' in s or 'row' in s) for s in sheets)
+        has_swiggy_raw = any('swiggy' in s and 'raw' in s for s in sheets)
+        has_food_cost  = any('food cost' in s for s in sheets)
+        has_sale_raw   = any('sale' in s for s in sheets)
+        has_mapping    = any(s in ('sheet1',) or ('mapping' in s) for s in sheets)
+
+        if has_zomato_raw and has_food_cost and has_sale_raw:
+            return 'monthly_raw', wb
+        if has_mapping and not has_zomato_raw:
+            return 'mapping', wb
+        return 'unknown', wb
+    except:
+        return 'unknown', None
+
+# ── LOAD MAPPING FROM STORED JSON ─────────────────────────────────────────────
+def parse_mapping_from_wb(wb):
+    """Parse mapping from Nov-style Sheet1."""
     mapping = {}
-    for row in wb['Manager to Res ID '].iter_rows(min_row=2, values_only=True):
+    sheet = None
+    for name in wb.sheetnames:
+        if name.lower() in ('sheet1',) or 'mapping' in name.lower():
+            sheet = wb[name]; break
+    if not sheet:
+        return None, "Could not find mapping sheet (expected 'Sheet1')"
+    for row in sheet.iter_rows(min_row=2, values_only=True):
         if not row[0]: continue
-        tl = str(row[0]).strip()
-        if tl not in mapping: mapping[tl] = []
-        mapping[tl].append({
-            'outlet': str(row[1]).strip(), 'zmt_rk': safe_id(row[2]),
-            'swg_rk': safe_id(row[3]), 'zmt_rf': safe_id(row[4]),
-            'swg_rf': safe_id(row[5]), 'pos': safe_id(row[6])
+        subzone = str(row[0]).strip()
+        pos_id  = safe_id(row[1])
+        zone    = str(row[2]).strip() if row[2] else ''
+        asm     = str(row[3]).strip() if row[3] else ''
+        zmt_rk  = safe_id(row[4])
+        zmt_rf  = safe_id(row[5])
+        swg_rk  = safe_id(row[6])
+        swg_rf  = safe_id(row[7])
+        if asm not in mapping: mapping[asm] = []
+        mapping[asm].append({
+            'outlet': subzone, 'pos': pos_id,
+            'zmt_rk': zmt_rk, 'zmt_rf': zmt_rf,
+            'swg_rk': swg_rk, 'swg_rf': swg_rf,
         })
+    return mapping, None
 
-    # Zomato
-    zmt = {}
-    for row in wb['Zomato Report'].iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            try: zmt[int(row[0])] = {'orders': safe_f(row[4]), 'complaints': safe_f(row[5])}
-            except: pass
+# ── LOAD MONTHLY RAW DATA ─────────────────────────────────────────────────────
+def load_monthly_raw(wb):
+    """Load Zomato, Swiggy, Food Cost from new monthly file format."""
 
-    # Swiggy
-    swg = {}
-    for row in wb['Swiggy Report'].iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            try: swg[int(row[0])] = {'accepted': safe_f(row[12]), 'igcc': safe_f(row[25]),
-                                      'kpt': safe_f(row[9], 999), 'rating': safe_f(row[5])}
-            except: pass
+    # ── Zomato ────────────────────────────────────────────────────────────────
+    zmt_sheet = None
+    for name in wb.sheetnames:
+        if 'zomato' in name.lower(): zmt_sheet = wb[name]; break
 
-    # Biz metrics
-    biz = {}
-    if wb2:
-        for row in wb2['Business Metrics Report'].iter_rows(min_row=2, values_only=True):
-            if not row[0]: continue
-            rid = safe_id(row[0])
-            if rid:
-                if rid not in biz: biz[rid] = {}
-                biz[rid][row[5]] = row[10]
+    zmt = {}  # {res_id: {orders, complaints, kpt, rating, online_pct}}
+    if zmt_sheet:
+        for row in zmt_sheet.iter_rows(min_row=2, values_only=True):
+            res_id = safe_id(row[0])
+            if not res_id: continue
+            metric = str(row[5]).strip() if row[5] else ''
+            value  = row[6]
+            if res_id not in zmt:
+                zmt[res_id] = {'orders': 0, 'complaints': 0, 'kpt': None,
+                               'rating': None, 'online_pct': None}
+            if metric == 'Delivered orders':
+                zmt[res_id]['orders'] = safe_f(value)
+            elif metric == 'Total complaints':
+                zmt[res_id]['complaints'] = safe_f(value)
+            elif metric == 'KPT (in minutes)':
+                zmt[res_id]['kpt'] = safe_f(value)
+            elif metric == 'Average rating':
+                zmt[res_id]['rating'] = safe_f(value)
+            elif metric == 'Online %':
+                zmt[res_id]['online_pct'] = parse_pct(value)
 
-    # Ratings
-    ratings = {}
-    for row in wb['Aggregaor Rating Link'].iter_rows(min_row=2, values_only=True):
-        if not row[1]: continue
-        pos = safe_id(row[1])
-        if pos:
-            rs = [safe_f(r) for r in [row[6], row[7], row[8], row[9]] if r and safe_f(r) > 0]
-            ratings[pos] = round(sum(rs) / len(rs), 2) if rs else 0.0
+    # ── Swiggy ────────────────────────────────────────────────────────────────
+    swg_sheet = None
+    for name in wb.sheetnames:
+        if 'swiggy' in name.lower(): swg_sheet = wb[name]; break
 
-    # Stock
-    stock = {}
-    for row in wb['OpeningClosing stock'].iter_rows(min_row=2, values_only=True):
-        if row[0]: stock[str(row[0]).strip().lower()] = {'opening': safe_f(row[1]), 'closing': safe_f(row[3])}
+    swg = {}  # {res_id: {kpt, avail, cmp_pct, orders}}
+    if swg_sheet:
+        for row in swg_sheet.iter_rows(min_row=2, values_only=True):
+            res_id = safe_id(row[0])
+            if not res_id: continue
+            metric = str(row[5]).strip() if row[5] else ''
+            value  = row[6]
+            if res_id not in swg:
+                swg[res_id] = {'kpt': None, 'avail': None, 'cmp_pct': None, 'orders': 0}
+            if metric == 'Kitchen Prep Time':
+                swg[res_id]['kpt'] = parse_min(str(value).replace(' mins','').replace(' min','')) if value else None
+            elif metric == 'Online Availability %':
+                swg[res_id]['avail'] = parse_pct(value)
+            elif metric == '% Orders with Complaints':
+                swg[res_id]['cmp_pct'] = parse_pct(value)
+            elif metric in ('Delivered Orders', 'Orders'):
+                swg[res_id]['orders'] = safe_f(value)
 
-    # Sale
-    sale = {}
-    for row in wb['Sale Report'].iter_rows(min_row=6, values_only=True):
-        if row[7]:
-            pos = safe_id(row[7])
-            if pos: sale[pos] = safe_f(row[16])
+    # ── Food Cost ─────────────────────────────────────────────────────────────
+    fc_sheet = None
+    for name in wb.sheetnames:
+        if 'food cost' in name.lower(): fc_sheet = wb[name]; break
 
-    # Hyperpure
-    hyp, hyp_names = {}, {}
-    for row in wb['Hyperpure Phcs Rpt'].iter_rows(min_row=15, values_only=True):
-        if row[0] and row[15]:
-            oid = safe_id(row[0])
-            if oid:
-                hyp[oid] = hyp.get(oid, 0) + safe_f(row[15])
-                if oid not in hyp_names and row[1]: hyp_names[oid] = str(row[1]).strip()
+    food_cost = {}  # {pos_id: {fc_pct, net_sale}}
+    if fc_sheet:
+        for row in fc_sheet.iter_rows(min_row=2, values_only=True):
+            pos = safe_id(row[1])
+            if not pos: continue
+            # Columns: Subzone, POS ID, Zone, ASM, Net Sale+PC, Opening, Closing, Local/Hyperpure, Store, Food Cost
+            net_sale = safe_f(row[4])
+            opening  = safe_f(row[5])
+            closing  = safe_f(row[6])
+            hyperpure= safe_f(row[7])
+            store    = safe_f(row[8])
+            fc_val   = row[9]  # pre-calculated food cost %
+            if fc_val is not None:
+                fc_pct = safe_f(fc_val) * 100 if safe_f(fc_val) < 2 else safe_f(fc_val)
+            elif net_sale > 0:
+                cogs   = opening + hyperpure + store - closing
+                fc_pct = round(cogs / net_sale * 100, 2)
+            else:
+                fc_pct = None
+            food_cost[pos] = {'fc_pct': fc_pct, 'net_sale': net_sale}
 
-    # Store purchases
-    store_pur = []
-    for row in wb['Store Purchases Rep'].iter_rows(min_row=2, values_only=True):
-        if row[1] and row[2]:
-            key = str(row[1]).upper().replace('PADDY HOSPITALITY PRIVATE LIMITED', '').strip()
-            store_pur.append({'key': key, 'amount': safe_f(row[2])})
+    # ── Ratings from Zomato ───────────────────────────────────────────────────
+    # We'll use Zomato average rating keyed by res_id; match to outlet via mapping
 
-    return dict(mapping=mapping, zmt=zmt, swg=swg, biz=biz, ratings=ratings,
-                stock=stock, sale=sale, hyp=hyp, hyp_names=hyp_names,
-                store_pur=store_pur, hygiene=hygiene_scores)
+    return zmt, swg, food_cost
 
-
-# ── CALCULATOR ────────────────────────────────────────────────────────────────
-def calculate(data):
-    mapping = data['mapping']
-    zmt = data['zmt']; swg = data['swg']; biz = data['biz']
-    ratings = data['ratings']; stock = data['stock']
-    sale = data['sale']; hyp = data['hyp']; hyp_names = data['hyp_names']
-    store_pur = data['store_pur']; hygiene = data['hygiene']
-
+# ── CALCULATOR (new format) ───────────────────────────────────────────────────
+def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores):
     results, disclaimers, flags = [], [], []
 
     for tl, outlets in mapping.items():
@@ -297,116 +293,121 @@ def calculate(data):
         outlet_rows = []
 
         for o in outlets:
-            outlet = o['outlet']; pos = o['pos']
-            zids = [x for x in [o['zmt_rk'], o['zmt_rf']] if x]
-            sids = [x for x in [o['swg_rk'], o['swg_rf']] if x]
-            notes = []
+            outlet = o['outlet']
+            pos    = o['pos']
+            zids   = [x for x in [o['zmt_rk'], o['zmt_rf']] if x]
+            sids   = [x for x in [o['swg_rk'], o['swg_rf']] if x]
+            notes  = []
 
-            # COMPLAINTS
-            biz_cmp = None
+            # ── COMPLAINTS ────────────────────────────────────────────────────
+            # Prefer Swiggy % orders with complaints, fallback to Zomato raw calc
+            s_cmp_pct = None
             for sid in sids:
-                if sid in biz and biz[sid].get('% Orders with Complaints'):
-                    biz_cmp = parse_pct(biz[sid]['% Orders with Complaints']); break
+                if sid in swg and swg[sid].get('cmp_pct') is not None:
+                    s_cmp_pct = swg[sid]['cmp_pct']; break
 
-            if biz_cmp is not None:
-                s_pts = score_c(biz_cmp); cmp_src = "Swiggy BizMetrics"
-                z_ord = sum(zmt[r]['orders'] for r in zids if r in zmt)
-                z_cmp_v = sum(zmt[r]['complaints'] for r in zids if r in zmt)
-                z_pct = z_cmp_v / z_ord * 100 if z_ord > 0 else None
-                z_pts = score_c(z_pct) if z_pct is not None else 0
-                cmp_pts = z_pts + s_pts; cmp_pct_display = round(biz_cmp, 2)
-            else:
-                s_ord = sum(swg[r]['accepted'] for r in sids if r in swg)
-                s_cmp_v = sum(swg[r]['igcc'] for r in sids if r in swg)
-                s_pct = s_cmp_v / s_ord * 100 if s_ord > 0 else None
-                s_pts = score_c(s_pct) if s_pct is not None else 0
-                z_ord = sum(zmt[r]['orders'] for r in zids if r in zmt)
-                z_cmp_v = sum(zmt[r]['complaints'] for r in zids if r in zmt)
-                z_pct = z_cmp_v / z_ord * 100 if z_ord > 0 else None
-                z_pts = score_c(z_pct) if z_pct is not None else 0
+            z_ord   = sum(zmt[r]['orders']     for r in zids if r in zmt)
+            z_cmp_v = sum(zmt[r]['complaints'] for r in zids if r in zmt)
+            z_pct   = round(z_cmp_v / z_ord * 100, 2) if z_ord > 0 else None
+            z_pts   = score_c(z_pct)
+
+            if s_cmp_pct is not None:
+                s_pts   = score_c(s_cmp_pct)
                 cmp_pts = z_pts + s_pts
-                cmp_pct_display = round(s_pct, 2) if s_pct else 0
-                cmp_src = "Swiggy+Zomato raw"
-            tl_c += cmp_pts
-            if cmp_pct_display and cmp_pct_display > 3:
-                flags.append((tl, outlet, "High Complaints", f"{cmp_pct_display:.1f}%", ">3%", cmp_pts))
+                cmp_display = round(s_cmp_pct, 2)
+                cmp_src = "Swiggy+Zomato"
+            elif z_pct is not None:
+                cmp_pts = z_pts
+                cmp_display = z_pct
+                cmp_src = "Zomato only"
+            else:
+                cmp_pts = 0; cmp_display = 0; cmp_src = "No data"
+                notes.append("No complaint data")
+                disclaimers.append(f"{tl} | {outlet}: Complaint data missing — scored 0")
 
-            # KPT
-            kpt_vals, kpt_src = [], None
+            tl_c += cmp_pts
+            if cmp_display and cmp_display > 3:
+                flags.append((tl, outlet, "High Complaints", f"{cmp_display:.1f}%", ">3%", cmp_pts))
+
+            # ── KPT ──────────────────────────────────────────────────────────
+            kpt_vals = []
             for sid in sids:
-                if sid in biz and biz[sid].get('Kitchen Prep Time'):
-                    v = parse_min(biz[sid]['Kitchen Prep Time'])
-                    if v: kpt_vals.append(v); kpt_src = "BizMetrics"
+                if sid in swg and swg[sid].get('kpt') is not None:
+                    kpt_vals.append(swg[sid]['kpt'])
+            # Fallback: Zomato KPT
             if not kpt_vals:
-                for sid in sids:
-                    if sid in swg and swg[sid]['kpt'] < 999:
-                        kpt_vals.append(swg[sid]['kpt']); kpt_src = "Swiggy O2MFR"
+                for rid in zids:
+                    if rid in zmt and zmt[rid].get('kpt') is not None:
+                        kpt_vals.append(zmt[rid]['kpt'])
+
             if kpt_vals:
                 avg_kpt = round(sum(kpt_vals) / len(kpt_vals), 2)
                 kpt_pts = 1 if avg_kpt < 12 else 0
+                kpt_src = "Swiggy" if any(swg.get(s, {}).get('kpt') for s in sids) else "Zomato"
             else:
-                avg_kpt = None; kpt_pts = 0
+                avg_kpt = None; kpt_pts = 0; kpt_src = "N/A"
                 notes.append("No KPT data")
                 disclaimers.append(f"{tl} | {outlet}: KPT unavailable — scored 0")
+
             tl_k += kpt_pts
             if avg_kpt and avg_kpt >= 12:
                 flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", "≥12 min", kpt_pts))
 
-            # RATINGS
-            avg_rat = ratings.get(pos, 0)
+            # ── RATING ───────────────────────────────────────────────────────
+            rat_vals = []
+            for rid in zids:
+                if rid in zmt and zmt[rid].get('rating'):
+                    rat_vals.append(zmt[rid]['rating'])
+            avg_rat = round(sum(rat_vals) / len(rat_vals), 2) if rat_vals else 0
             rat_pts = 1 if avg_rat >= 4.0 else 0
             tl_r += rat_pts
             if 0 < avg_rat < 4.0:
                 flags.append((tl, outlet, "Low Rating", f"{avg_rat:.2f}", "<4.0", rat_pts))
+            if not rat_vals:
+                notes.append("No rating data")
 
-            # AVAILABILITY
+            # ── AVAILABILITY ─────────────────────────────────────────────────
             avail_pct = None
             for sid in sids:
-                if sid in biz and biz[sid].get('Online Availability %'):
-                    avail_pct = parse_pct(biz[sid]['Online Availability %']); break
-            avail_pts = 1 if (avail_pct and avail_pct >= 98) else 0
+                if sid in swg and swg[sid].get('avail') is not None:
+                    avail_pct = swg[sid]['avail']; break
+            avail_pts = 1 if (avail_pct is not None and avail_pct >= 98) else 0
             tl_av += avail_pts
-            if avail_pct and avail_pct < 98:
+            if avail_pct is not None and avail_pct < 98:
                 flags.append((tl, outlet, "Low Availability", f"{avail_pct:.1f}%", "<98%", avail_pts))
             if avail_pct is None:
+                notes.append("No availability data")
                 disclaimers.append(f"{tl} | {outlet}: Availability missing — scored 0")
 
-            # FOOD COST
-            stk_key = outlet.lower().strip()
-            stk_data = stock.get(stk_key) or stock.get(fuzzy(outlet, list(stock.keys())))
-            hyp_amt = 0
-            for hid, hname in hyp_names.items():
-                if fuzzy(outlet, [hname]): hyp_amt = hyp.get(hid, 0); break
-            cands = [s['key'] for s in store_pur]
-            bk = fuzzy(outlet, cands, threshold=0.38)
-            store_amt = next((s['amount'] for s in store_pur if s['key'] == bk), 0) if bk else 0
-            net_sale = sale.get(pos, 0)
-            if stk_data and net_sale > 0:
-                cogs = stk_data['opening'] + (store_amt + hyp_amt) - stk_data['closing']
-                fc_pct = round(cogs / net_sale * 100, 2)
+            # ── FOOD COST ────────────────────────────────────────────────────
+            fc_data = food_cost.get(pos)
+            if fc_data and fc_data['fc_pct'] is not None:
+                fc_pct = round(fc_data['fc_pct'], 2)
                 fc_pts = 1 if fc_pct < 40 else 0
             else:
                 fc_pct = None; fc_pts = 0
-                notes.append("FC data incomplete")
-                disclaimers.append(f"{tl} | {outlet}: Food cost data incomplete — scored 0")
+                notes.append("FC data missing")
+                disclaimers.append(f"{tl} | {outlet}: Food cost data missing — scored 0")
+
             tl_fc += fc_pts
-            if fc_pct and fc_pct >= 40:
+            if fc_pct is not None and fc_pct >= 40:
                 flags.append((tl, outlet, "High Food Cost", f"{fc_pct:.1f}%", "≥40%", fc_pts))
 
             outlet_rows.append({
                 'outlet': outlet, 'pos': pos,
-                'cmp_pct': cmp_pct_display, 'cmp_pts': cmp_pts, 'cmp_src': cmp_src,
-                'kpt_avg': avg_kpt, 'kpt_pts': kpt_pts, 'kpt_src': kpt_src or "N/A",
+                'cmp_pct': cmp_display, 'cmp_pts': cmp_pts, 'cmp_src': cmp_src,
+                'kpt_avg': avg_kpt, 'kpt_pts': kpt_pts, 'kpt_src': kpt_src,
                 'rat_avg': avg_rat, 'rat_pts': rat_pts,
                 'avail_pct': avail_pct, 'avail_pts': avail_pts,
                 'fc_pct': fc_pct, 'fc_pts': fc_pts,
                 'notes': "; ".join(notes) if notes else "OK"
             })
 
-        hyg_val = hygiene.get(tl, 0)
-        total_pts = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av
-        avg_score = round(total_pts / n, 1) if n > 0 else 0
-        tier = score_tier(avg_score)
+        hyg_val    = hygiene_scores.get(tl, 0)
+        total_pts  = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av
+        avg_score  = round(total_pts / n, 1) if n > 0 else 0
+        tier       = score_tier(avg_score)
+
         results.append({
             'tl': tl, 'outlets': n, 'sales_pts': 0,
             'fc_pts': tl_fc, 'cmp_pts': tl_c, 'kpt_pts': tl_k,
@@ -416,7 +417,6 @@ def calculate(data):
         })
 
     return results, disclaimers, flags
-
 
 # ── EXCEL BUILDER ─────────────────────────────────────────────────────────────
 TIER_CLR = {
@@ -453,7 +453,7 @@ def build_excel(results, disclaimers, flags, month):
 
     ws1.merge_cells("A2:K2")
     c = ws1["A2"]
-    c.value = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  Hygiene & Sales Break Point require monthly manual input"
+    c.value = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  Hygiene requires manual input each month"
     c.font = Font(size=9, color="FFFFFF", italic=True, name="Arial")
     c.fill = PatternFill("solid", start_color=CLR["hm"])
     c.alignment = Alignment(horizontal="center", vertical="center")
@@ -482,7 +482,6 @@ def build_excel(results, disclaimers, flags, month):
         tc.alignment = Alignment(horizontal="center", vertical="center")
         ws1.row_dimensions[i].height = 18
 
-    # Grand Total
     tr = len(sorted_r) + 4
     col_keys = {3: 'sales_pts', 4: 'fc_pts', 5: 'cmp_pts', 6: 'kpt_pts',
                 7: 'rat_pts', 8: 'hyg_pts', 9: 'avail_pts'}
@@ -499,17 +498,15 @@ def build_excel(results, disclaimers, flags, month):
             c.value = sum(r[col_keys[col]] for r in results)
     ws1.row_dimensions[tr].height = 20
 
-    # Conditions
     cr = tr + 2
     conds = [
         ("SCORING CONDITIONS", "", "", ""),
-        ("Sale Break Point", "Incremental Sale MOM", "", "PetPooja — prev month needed"),
-        ("Food Cost < 40%", "1pt / 0pt", "", "Manual + Hyperpure + Store Purchases"),
-        ("Complaint", "0-1%=4pts | 1-2%=3pts | 2-3%=1pt | >3%=0pt", "", "Swiggy BizMetrics + Zomato"),
-        ("KPT", "< 12 min = 1pt | ≥ 12 min = 0pt", "", "Swiggy BizMetrics / O2MFR"),
+        ("Food Cost < 40%", "1pt / 0pt", "", "Pre-calculated in Food Cost sheet"),
+        ("Complaint", "0-1%=4pts | 1-2%=3pts | 2-3%=1pt | >3%=0pt", "", "Swiggy + Zomato"),
+        ("KPT", "< 12 min = 1pt | ≥ 12 min = 0pt", "", "Swiggy / Zomato"),
         ("Hygiene", "Manual input required each month", "", "Surprise visit scores"),
-        ("Rating", "≥ 4.0 = 1pt | < 4.0 = 0pt", "", "Aggregator Rating Link"),
-        ("Availability", "≥ 98% = 1pt | < 98% = 0pt", "", "Swiggy BizMetrics"),
+        ("Rating", "≥ 4.0 = 1pt | < 4.0 = 0pt", "", "Zomato Average Rating"),
+        ("Availability", "≥ 98% = 1pt | < 98% = 0pt", "", "Swiggy Online Availability"),
         ("Grade", "Bronze 0–3 | Silver 3–6", "Gold 6–8", "Platinum 8–10"),
     ]
     for j, (a, b, cv, d) in enumerate(conds):
@@ -547,7 +544,7 @@ def build_excel(results, disclaimers, flags, month):
         for o in r['outlet_detail']:
             bg = CLR["lg"] if rn % 2 == 0 else CLR["wh"]
             vals = [r['tl'], o['outlet'],
-                    f"{o['cmp_pct']:.2f}%" if o['cmp_pct'] is not None else "N/A",
+                    f"{o['cmp_pct']:.2f}%" if o['cmp_pct'] else "N/A",
                     o['cmp_pts'], o['cmp_src'],
                     f"{o['kpt_avg']:.2f}" if o['kpt_avg'] is not None else "N/A",
                     o['kpt_pts'], o['kpt_src'],
@@ -567,7 +564,7 @@ def build_excel(results, disclaimers, flags, month):
                     elif isinstance(val, int) and val >= 1: c.fill = PatternFill("solid", start_color=CLR["gn"])
             ws2.row_dimensions[rn].height = 15; rn += 1
 
-    for i, w in enumerate([24, 26, 10, 10, 20, 10, 9, 20, 11, 10, 10, 10, 12, 8, 35], 1):
+    for i, w in enumerate([24, 26, 10, 10, 18, 10, 9, 15, 11, 10, 10, 10, 12, 8, 35], 1):
         ws2.column_dimensions[get_column_letter(i)].width = w
 
     # ── SHEET 3: FLAGGED OUTLETS ─────────────────────────────────────────────
@@ -619,24 +616,199 @@ def build_excel(results, disclaimers, flags, month):
     ws4.column_dimensions["C"].width = 25
 
     buf = io.BytesIO()
-    wb.save(buf)
+    wb.save(buf); buf.seek(0)
+    return buf.read()
+
+# ── PDF BUILDER ───────────────────────────────────────────────────────────────
+def build_pdf_report(results, flags, disclaimers, month):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                     TableStyle, HRFlowable, PageBreak)
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+
+    C_BG=colors.HexColor('#0f0f0f'); C_GOLD=colors.HexColor('#e8a020')
+    C_WHITE=colors.white; C_GREY=colors.HexColor('#888888')
+    C_RED=colors.HexColor('#ef4444')
+    T_PLATINUM=colors.HexColor('#FFD700'); T_GOLD=colors.HexColor('#FFA500')
+    T_SILVER=colors.HexColor('#C0C0C0'); T_BRONZE=colors.HexColor('#CD7F32')
+    TIER_BG={'Platinum':T_PLATINUM,'Gold':T_GOLD,'Silver':T_SILVER,'Bronze':T_BRONZE}
+    TIER_FG={'Platinum':colors.black,'Gold':colors.black,'Silver':colors.black,'Bronze':colors.white}
+
+    def sty(name,**kw):
+        s=ParagraphStyle(name)
+        for k,v in kw.items(): setattr(s,k,v)
+        return s
+
+    buf=io.BytesIO()
+    doc=SimpleDocTemplate(buf,pagesize=A4,leftMargin=15*mm,rightMargin=15*mm,
+                          topMargin=12*mm,bottomMargin=12*mm)
+    story=[]; sorted_r=sorted(results,key=lambda x:x['avg_score'],reverse=True)
+
+    hd=[[Paragraph('RollsKing',sty('h1',fontSize=32,leading=36,textColor=C_WHITE,
+                   fontName='Helvetica-Bold')),
+         Paragraph(f'Generated<br/>{datetime.now().strftime("%d %b %Y")}',
+                   sty('hr',fontSize=8,leading=12,textColor=C_GREY,
+                       fontName='Helvetica',alignment=TA_RIGHT))]]
+    ht=Table(hd,colWidths=[120*mm,60*mm])
+    ht.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),C_BG),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),('LEFTPADDING',(0,0),(-1,-1),6*mm),
+        ('RIGHTPADDING',(0,0),(-1,-1),6*mm),('TOPPADDING',(0,0),(-1,-1),6*mm),
+        ('BOTTOMPADDING',(0,0),(-1,-1),4*mm)]))
+    story.append(ht)
+    story.append(HRFlowable(width='100%',thickness=2,color=C_GOLD,spaceAfter=4))
+
+    sd=[[Paragraph(f'Monthly Performance Report — {month}',
+                   sty('ms',fontSize=11,leading=14,textColor=C_GOLD,fontName='Helvetica-Bold')),
+         Paragraph(f'{len(results)} Team Leaders  ·  {sum(r["outlets"] for r in results)} Outlets',
+                   sty('ms2',fontSize=9,leading=12,textColor=C_GREY,
+                       fontName='Helvetica',alignment=TA_RIGHT))]]
+    st2=Table(sd,colWidths=[120*mm,60*mm])
+    st2.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),C_BG),
+        ('LEFTPADDING',(0,0),(-1,-1),6*mm),('RIGHTPADDING',(0,0),(-1,-1),6*mm),
+        ('TOPPADDING',(0,0),(-1,-1),3*mm),('BOTTOMPADDING',(0,0),(-1,-1),4*mm)]))
+    story.append(st2); story.append(Spacer(1,6*mm))
+
+    pc=sum(1 for r in results if r['tier']=='Platinum')
+    gc=sum(1 for r in results if r['tier']=='Gold')
+    sc=sum(1 for r in results if r['tier']=='Silver')
+    bc=sum(1 for r in results if r['tier']=='Bronze')
+    top=sorted_r[0]
+    def scell(val,lbl):
+        return [Paragraph(f'<b>{val}</b>',sty('sv',fontSize=22,leading=26,
+                textColor=colors.black,fontName='Helvetica-Bold',alignment=TA_CENTER)),
+                Paragraph(lbl,sty('sl',fontSize=7,leading=9,textColor=colors.black,
+                fontName='Helvetica',alignment=TA_CENTER))]
+    stats=[[scell(f'{top["avg_score"]}',f'Top Score')[0],scell(str(pc),'Platinum')[0],
+            scell(str(gc),'Gold')[0],scell(str(sc),'Silver')[0],
+            scell(str(bc),'Bronze')[0],
+            Paragraph(f'<b>{len(flags)}</b>',sty('sv2',fontSize=22,leading=26,
+            textColor=colors.white,fontName='Helvetica-Bold',alignment=TA_CENTER))],
+           [scell(f'{top["avg_score"]}',f'Top\n{top["tl"].split("(")[0].strip()}')[1],
+            scell(str(pc),'Platinum')[1],scell(str(gc),'Gold')[1],
+            scell(str(sc),'Silver')[1],scell(str(bc),'Bronze')[1],
+            Paragraph('Flags',sty('sl2',fontSize=7,leading=9,textColor=colors.white,
+            fontName='Helvetica',alignment=TA_CENTER))]]
+    sbgs=[C_GOLD,T_PLATINUM,T_GOLD,T_SILVER,T_BRONZE,C_RED]
+    stbl=Table(stats,colWidths=[30*mm]*6)
+    sstyle=[('ALIGN',(0,0),(-1,-1),'CENTER'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+            ('TOPPADDING',(0,0),(-1,-1),3*mm),('BOTTOMPADDING',(0,0),(-1,-1),3*mm)]
+    for i,bg in enumerate(sbgs): sstyle+=[('BACKGROUND',(i,0),(i,1),bg)]
+    stbl.setStyle(TableStyle(sstyle))
+    story.append(stbl); story.append(Spacer(1,6*mm))
+
+    story.append(Paragraph('TEAM LEADER PERFORMANCE',
+                            sty('sec',fontSize=8,leading=10,textColor=C_GOLD,
+                                fontName='Helvetica-Bold',spaceAfter=4)))
+    hdrs=[['#','Team Leader','Outlets','Complaints','KPT','Rating','Food Cost','Hygiene','Avail','Avg','Tier']]
+    rows=hdrs+[[str(i),r['tl'].split('(')[0].strip(),str(r['outlets']),
+                str(r['cmp_pts']),str(r['kpt_pts']),str(r['rat_pts']),
+                str(r['fc_pts']),str(r['hyg_pts']),str(r['avail_pts']),
+                str(r['avg_score']),r['tier']] for i,r in enumerate(sorted_r,1)]
+    cw=[8*mm,42*mm,14*mm,20*mm,10*mm,13*mm,17*mm,14*mm,12*mm,12*mm,18*mm]
+    ttbl=Table(rows,colWidths=cw,repeatRows=1)
+    ts=[('BACKGROUND',(0,0),(-1,0),C_BG),('TEXTCOLOR',(0,0),(-1,0),C_GOLD),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,0),7.5),
+        ('ALIGN',(0,0),(-1,-1),'CENTER'),('ALIGN',(1,0),(1,-1),'LEFT'),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),('FONTNAME',(0,1),(-1,-1),'Helvetica'),
+        ('FONTSIZE',(0,1),(-1,-1),8),('TOPPADDING',(0,0),(-1,-1),2.5*mm),
+        ('BOTTOMPADDING',(0,0),(-1,-1),2.5*mm),('LEFTPADDING',(0,0),(-1,-1),2*mm),
+        ('GRID',(0,0),(-1,-1),0.3,colors.HexColor('#dddddd')),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#f5f5f5')])]
+    for i,r in enumerate(sorted_r,1):
+        ts+=[('BACKGROUND',(10,i),(10,i),TIER_BG.get(r['tier'],colors.white)),
+             ('TEXTCOLOR',(10,i),(10,i),TIER_FG.get(r['tier'],colors.black)),
+             ('FONTNAME',(10,i),(10,i),'Helvetica-Bold')]
+        if i==1: ts.append(('BACKGROUND',(0,1),(9,1),colors.HexColor('#fffbeb')))
+    ttbl.setStyle(TableStyle(ts)); story.append(ttbl); story.append(Spacer(1,6*mm))
+
+    story.append(Paragraph('SCORING KEY',sty('sec2',fontSize=8,leading=10,
+                            textColor=C_GOLD,fontName='Helvetica-Bold',spaceAfter=4)))
+    kd=[['Metric','Rule','Source'],
+        ['Complaints','0-1%=4pts | 1-2%=3pts | 2-3%=1pt | >3%=0pt','Swiggy + Zomato'],
+        ['KPT','Under 12 min = 1pt | 12 min or above = 0pt','Swiggy / Zomato'],
+        ['Rating','4.0 or above = 1pt | Below 4.0 = 0pt','Zomato Average Rating'],
+        ['Food Cost','Under 40% = 1pt | 40% or above = 0pt','Food Cost Compile Sheet'],
+        ['Availability','98% or above = 1pt | Below 98% = 0pt','Swiggy Online Availability'],
+        ['Hygiene','Manual input each month','Surprise visit scores'],
+        ['Grade','Bronze 0-3 | Silver 3-6 | Gold 6-8 | Platinum 8+','Total Avg / Outlets']]
+    ktbl=Table(kd,colWidths=[28*mm,82*mm,70*mm])
+    ktbl.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),C_BG),('TEXTCOLOR',(0,0),(-1,0),C_GOLD),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,0),7.5),
+        ('FONTNAME',(0,1),(-1,-1),'Helvetica'),('FONTSIZE',(0,1),(-1,-1),7.5),
+        ('FONTNAME',(0,1),(0,-1),'Helvetica-Bold'),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#f5f5f5')]),
+        ('ALIGN',(0,0),(-1,-1),'LEFT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('TOPPADDING',(0,0),(-1,-1),2*mm),('BOTTOMPADDING',(0,0),(-1,-1),2*mm),
+        ('LEFTPADDING',(0,0),(-1,-1),2*mm),
+        ('GRID',(0,0),(-1,-1),0.3,colors.HexColor('#dddddd'))]))
+    story.append(ktbl)
+
+    if flags:
+        story.append(PageBreak())
+        story.append(Paragraph('FLAGGED OUTLETS',sty('sec3',fontSize=8,leading=10,
+                                textColor=C_GOLD,fontName='Helvetica-Bold',spaceAfter=4)))
+        story.append(Paragraph(f'{len(flags)} outlets breached thresholds this month.',
+                                sty('fi',fontSize=8,leading=11,textColor=C_GREY,
+                                    fontName='Helvetica',spaceAfter=4)))
+        issue_types={}
+        for f in flags:
+            if f[2] not in issue_types: issue_types[f[2]]=[]
+            issue_types[f[2]].append(f)
+        ibgs={'High Complaints':colors.HexColor('#7f1d1d'),'KPT Exceeded':colors.HexColor('#7c2d12'),
+              'Low Rating':colors.HexColor('#1e3a5f'),'Low Availability':colors.HexColor('#14532d'),
+              'High Food Cost':colors.HexColor('#4a1d96')}
+        for issue,iflags in issue_types.items():
+            story.append(Spacer(1,3*mm))
+            ih=Table([[Paragraph(f'<b>{issue}</b>',sty('ih',fontSize=8,leading=10,
+                        textColor=colors.white,fontName='Helvetica-Bold')),
+                       Paragraph(f'{len(iflags)} outlets',sty('ic',fontSize=8,leading=10,
+                        textColor=colors.white,fontName='Helvetica',alignment=TA_RIGHT))]],
+                     colWidths=[140*mm,40*mm])
+            ih.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,-1),ibgs.get(issue,C_BG)),
+                ('LEFTPADDING',(0,0),(-1,-1),3*mm),('RIGHTPADDING',(0,0),(-1,-1),3*mm),
+                ('TOPPADDING',(0,0),(-1,-1),2*mm),('BOTTOMPADDING',(0,0),(-1,-1),2*mm)]))
+            story.append(ih)
+            fr=[['Team Leader','Outlet','Value','Threshold']]+\
+               [[f[0].split('(')[0].strip(),f[1],f[3],f[4]] for f in iflags]
+            ft=Table(fr,colWidths=[45*mm,65*mm,25*mm,45*mm])
+            ft.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#f3f4f6')),
+                ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),7.5),
+                ('FONTNAME',(0,1),(-1,-1),'Helvetica'),
+                ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor('#f5f5f5')]),
+                ('ALIGN',(0,0),(-1,-1),'LEFT'),('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+                ('TOPPADDING',(0,0),(-1,-1),1.8*mm),('BOTTOMPADDING',(0,0),(-1,-1),1.8*mm),
+                ('LEFTPADDING',(0,0),(-1,-1),2*mm),
+                ('GRID',(0,0),(-1,-1),0.3,colors.HexColor('#e5e7eb'))]))
+            story.append(ft)
+
+    story.append(Spacer(1,6*mm))
+    story.append(HRFlowable(width='100%',thickness=0.5,color=C_GREY))
+    story.append(Spacer(1,2*mm))
+    story.append(Paragraph(
+        f'RollsKing Internal Report  ·  {month}  ·  Auto-generated  ·  Hygiene requires manual input',
+        sty('foot',fontSize=7,leading=9,textColor=C_GREY,fontName='Helvetica',alignment=TA_CENTER)))
+    doc.build(story)
     buf.seek(0)
     return buf.read()
 
-
 # ── SESSION STATE ─────────────────────────────────────────────────────────────
-if 'logged_in' not in st.session_state: st.session_state.logged_in = False
-if 'report_bytes' not in st.session_state: st.session_state.report_bytes = None
-if 'report_name' not in st.session_state: st.session_state.report_name = None
+defaults = {
+    'logged_in': False, 'mapping': None, 'report_bytes': None,
+    'report_name': None, 'pdf_bytes': None, 'pdf_name': None,
+}
+for k, v in defaults.items():
+    if k not in st.session_state: st.session_state[k] = v
 
 # ── LOGIN ─────────────────────────────────────────────────────────────────────
 if not st.session_state.logged_in:
-    st.markdown('<div class="main-title">RollsKing<br>Reports</div>', unsafe_allow_html=True)
-    st.markdown('<div class="main-subtitle">Monthly performance reporting — automated</div>', unsafe_allow_html=True)
-    st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    pwd = st.text_input("Password", type="password", placeholder="Enter access password")
-    if st.button("Enter"):
-        if pwd == PASSWORD:
+    st.markdown('<div class="main-title">RollsKing</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-subtitle">Operations Report Generator</div>', unsafe_allow_html=True)
+    pw = st.text_input("Password", type="password", placeholder="Enter access password")
+    if st.button("Sign In"):
+        if pw == APP_PASSWORD:
             st.session_state.logged_in = True
             st.rerun()
         else:
@@ -644,132 +816,207 @@ if not st.session_state.logged_in:
     st.stop()
 
 # ── MAIN APP ──────────────────────────────────────────────────────────────────
-st.markdown('<div class="main-title">RollsKing<br>Reports</div>', unsafe_allow_html=True)
-st.markdown('<div class="main-subtitle">Upload your files, enter manual scores, generate the report.</div>', unsafe_allow_html=True)
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown('<div class="main-title">RollsKing Reports</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-subtitle">Monthly Performance Report Generator</div>', unsafe_allow_html=True)
 
-# ── STEP 1: FILES ─────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">Step 1 — Upload Files</div>', unsafe_allow_html=True)
+tab_report, tab_mapping = st.tabs(["📊  Generate Report", "🗂️  Manage Mapping"])
 
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("**Main Raw Data File**")
-    st.caption("Ops_Review_Raw_Data file with all sheets")
-    raw_file = st.file_uploader("Upload main file", type=["xlsx"], key="raw", label_visibility="collapsed")
-    if raw_file:
-        st.markdown('<span class="status-ok">✓ Uploaded</span>', unsafe_allow_html=True)
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 1 — GENERATE REPORT
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_report:
 
-with col2:
-    st.markdown("**Swiggy Business Metrics File**")
-    st.caption("business_metrics_report download from Swiggy")
-    biz_file = st.file_uploader("Upload business metrics", type=["xlsx"], key="biz", label_visibility="collapsed")
-    if biz_file:
-        st.markdown('<span class="status-ok">✓ Uploaded</span>', unsafe_allow_html=True)
-    else:
-        st.markdown('<span class="status-warn">⚠ Optional — KPT & Availability may be limited without it</span>', unsafe_allow_html=True)
+    # Check mapping
+    if not st.session_state.mapping:
+        st.markdown('<div class="card-gold">', unsafe_allow_html=True)
+        st.warning("⚠️ No outlet mapping loaded. Go to **Manage Mapping** tab to upload your mapping file first.")
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.stop()
 
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    mapping = st.session_state.mapping
+    tl_names = sorted(mapping.keys())
+    total_outlets = sum(len(v) for v in mapping.values())
 
-# ── STEP 2: MONTH ─────────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">Step 2 — Report Month</div>', unsafe_allow_html=True)
-months = ["January", "February", "March", "April", "May", "June",
-          "July", "August", "September", "October", "November", "December"]
-years = [2024, 2025, 2026]
-col1, col2 = st.columns(2)
-with col1:
-    sel_month = st.selectbox("Month", months, index=11)
-with col2:
-    sel_year = st.selectbox("Year", years, index=1)
-month_label = f"{sel_month} {sel_year}"
+    st.markdown(f"""
+    <div class="card">
+        <div class="section-label">Mapping Loaded</div>
+        <span class="status-ok">✓ {len(tl_names)} Team Leaders · {total_outlets} Outlets</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
+    # ── STEP 1: UPLOAD FILES ─────────────────────────────────────────────────
+    st.markdown('<div class="section-label"><span class="step-badge">1</span>Upload Monthly Data Files</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.caption("Upload your monthly file(s). Each file should contain: Zomato raw data, Swiggy raw data, Food Cost Compile Data, and Sale raw data.")
 
-# ── STEP 3: HYGIENE ───────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">Step 3 — Hygiene Scores (Manual)</div>', unsafe_allow_html=True)
-st.caption("Enter surprise visit scores for each Team Leader. Leave as 0 if not conducted this month.")
-
-if raw_file:
-    try:
-        wb_tmp = openpyxl.load_workbook(io.BytesIO(raw_file.read()))
-        raw_file.seek(0)
-        tl_names = []
-        for row in wb_tmp['Manager to Res ID '].iter_rows(min_row=2, values_only=True):
-            if row[0] and str(row[0]).strip() not in tl_names:
-                tl_names.append(str(row[0]).strip())
-    except:
-        tl_names = []
-
-    hygiene_scores = {}
-    if tl_names:
-        cols = st.columns(3)
-        for i, tl in enumerate(tl_names):
-            with cols[i % 3]:
-                short = tl.split('(')[0].strip()
-                hygiene_scores[tl] = st.number_input(short, min_value=0, max_value=20, value=0, key=f"hyg_{tl}")
-    else:
-        st.warning("Upload the main file first to see TL names.")
-        hygiene_scores = {}
-else:
-    st.info("Upload the main file first to enter hygiene scores.")
-    hygiene_scores = {}
-
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
-
-# ── STEP 4: GENERATE ─────────────────────────────────────────────────────────
-st.markdown('<div class="section-label">Step 4 — Generate Report</div>', unsafe_allow_html=True)
-
-if not raw_file:
-    st.warning("Please upload the main raw data file to continue.")
-elif st.button("Generate Report"):
-    with st.spinner("Reading data and calculating scores..."):
-        try:
-            raw_bytes = raw_file.read()
-            biz_bytes = biz_file.read() if biz_file else None
-
-            data = load_all_data(raw_bytes, biz_bytes, hygiene_scores)
-            results, disclaimers, flags = calculate(data)
-
-            st.success(f"Calculated scores for {sum(r['outlets'] for r in results)} outlets across {len(results)} Team Leaders.")
-
-            with st.spinner("Building Excel report..."):
-                excel_bytes = build_excel(results, disclaimers, flags, month_label)
-                st.session_state.report_bytes = excel_bytes
-                st.session_state.report_name = f"RollsKing_Performance_{sel_month}_{sel_year}.xlsx"
-
-        except Exception as e:
-            st.error(f"Error: {str(e)}")
-            st.exception(e)
-
-# ── DOWNLOAD ──────────────────────────────────────────────────────────────────
-if st.session_state.report_bytes:
-    st.markdown('<hr class="divider">', unsafe_allow_html=True)
-    st.markdown('<div class="section-label">Report Ready</div>', unsafe_allow_html=True)
-
-    # Quick preview
-    try:
-        wb_prev = openpyxl.load_workbook(io.BytesIO(st.session_state.report_bytes))
-        ws_prev = wb_prev["TL Performance Summary"]
-        with st.expander("Preview — TL Scores", expanded=True):
-            rows = []
-            for row in ws_prev.iter_rows(min_row=4, values_only=True):
-                if row[0] and row[0] != "GRAND TOTAL" and row[9]:
-                    rows.append({"Team Leader": row[0], "Avg Score": row[9], "Tier": row[10]})
-                if row[0] == "GRAND TOTAL": break
-            if rows:
-                import pandas as pd
-                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-    except: pass
-
-    st.download_button(
-        label="⬇ Download Excel Report",
-        data=st.session_state.report_bytes,
-        file_name=st.session_state.report_name,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    uploaded_files = st.file_uploader(
+        "Drop files here",
+        type=["xlsx"],
+        accept_multiple_files=True,
+        label_visibility="collapsed"
     )
 
+    detected = []
+    if uploaded_files:
+        for f in uploaded_files:
+            fbytes = f.read()
+            ftype, wb = detect_file_type(fbytes, f.name)
+            detected.append({'name': f.name, 'type': ftype, 'bytes': fbytes, 'wb': wb})
+
+        for d in detected:
+            icon  = "✓" if d['type'] == 'monthly_raw' else "?"
+            color = "chip-ok" if d['type'] == 'monthly_raw' else "chip-warn"
+            label = "Monthly Data" if d['type'] == 'monthly_raw' else "Unknown Format"
+            st.markdown(f'<span class="{color}">{icon} {d["name"]} — {label}</span>', unsafe_allow_html=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── STEP 2: SELECT MONTH ─────────────────────────────────────────────────
+    st.markdown('<div class="section-label"><span class="step-badge">2</span>Select Month</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    months = ["January 2026","February 2026","March 2026","April 2026","May 2026",
+              "June 2026","July 2026","August 2026","September 2026","October 2025",
+              "November 2025","December 2025"]
+    sel_month = st.selectbox("Month", months, label_visibility="collapsed")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── STEP 3: HYGIENE SCORES ───────────────────────────────────────────────
+    st.markdown('<div class="section-label"><span class="step-badge">3</span>Hygiene Scores (Manual)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.caption("Enter hygiene inspection score for each Team Leader this month.")
+
+    hygiene_scores = {}
+    cols = st.columns(2)
+    for i, tl in enumerate(tl_names):
+        with cols[i % 2]:
+            short = tl.split("(")[0].strip()
+            hygiene_scores[tl] = st.number_input(short, min_value=0, max_value=5,
+                                                  value=0, step=1, key=f"hyg_{tl}")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── STEP 4: GENERATE ─────────────────────────────────────────────────────
+    st.markdown('<div class="section-label"><span class="step-badge">4</span>Generate Report</div>', unsafe_allow_html=True)
+
+    valid_files = [d for d in detected if d['type'] == 'monthly_raw'] if detected else []
+
+    if not valid_files:
+        st.info("Upload at least one monthly data file above to generate the report.")
+    else:
+        if st.button("⚡ Generate Report"):
+            with st.spinner("Processing data and building report..."):
+                try:
+                    # Merge data from all uploaded monthly files
+                    all_zmt, all_swg, all_fc = {}, {}, {}
+                    for d in valid_files:
+                        zmt, swg, fc = load_monthly_raw(d['wb'])
+                        all_zmt.update(zmt)
+                        all_swg.update(swg)
+                        all_fc.update(fc)
+
+                    results, disclaimers, flags = calculate_new(
+                        mapping, all_zmt, all_swg, all_fc, hygiene_scores
+                    )
+
+                    excel_bytes = build_excel(results, disclaimers, flags, sel_month)
+                    pdf_bytes   = build_pdf_report(results, flags, disclaimers, sel_month)
+                    month_slug  = sel_month.replace(" ", "_")
+
+                    st.session_state.report_bytes = excel_bytes
+                    st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
+                    st.session_state.pdf_bytes    = pdf_bytes
+                    st.session_state.pdf_name     = f"RollsKing_Report_{month_slug}.pdf"
+
+                    st.success(f"✓ Report generated — {len(results)} TLs, {sum(r['outlets'] for r in results)} outlets, {len(flags)} flags")
+
+                except Exception as e:
+                    st.error(f"Error generating report: {e}")
+                    import traceback; st.code(traceback.format_exc())
+
+    # ── DOWNLOADS ────────────────────────────────────────────────────────────
+    if st.session_state.report_bytes:
+        st.markdown("<hr class='divider'>", unsafe_allow_html=True)
+        st.markdown('<div class="section-label">Download Reports</div>', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
+            st.download_button("📥 Download Excel",
+                data=st.session_state.report_bytes,
+                file_name=st.session_state.report_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        with c2:
+            st.download_button("📄 Download PDF",
+                data=st.session_state.pdf_bytes,
+                file_name=st.session_state.pdf_name,
+                mime="application/pdf")
+
+# ════════════════════════════════════════════════════════════════════════════════
+# TAB 2 — MANAGE MAPPING
+# ════════════════════════════════════════════════════════════════════════════════
+with tab_mapping:
+    st.markdown('<div class="section-label">Outlet & Team Leader Mapping</div>', unsafe_allow_html=True)
+
+    # Upload mapping file
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown("**Upload Mapping File** — Only needed once. Re-upload only when outlets or TLs change.")
+    st.caption("Expected format: Sheet named 'Sheet1' with columns: Subzone, POS ID, Zone, ASM, Zomato ID (RK), Zomato ID (RF), Swiggy ID (RK), Swiggy ID (RF)")
+    map_file = st.file_uploader("Upload mapping file", type=["xlsx"], key="map_uploader")
+    if map_file:
+        mb = map_file.read()
+        ftype, wb = detect_file_type(mb, map_file.name)
+        if wb:
+            mapping_data, err = parse_mapping_from_wb(wb)
+            if err:
+                st.error(f"Could not parse mapping: {err}")
+            else:
+                st.session_state.mapping = mapping_data
+                total = sum(len(v) for v in mapping_data.values())
+                st.success(f"✓ Mapping loaded: {len(mapping_data)} Team Leaders, {total} Outlets")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # Show current mapping
+    if st.session_state.mapping:
+        st.markdown('<div class="section-label">Current Mapping</div>', unsafe_allow_html=True)
+        for tl, outlets in sorted(st.session_state.mapping.items()):
+            with st.expander(f"{tl.split('(')[0].strip()} — {len(outlets)} outlets"):
+                for o in outlets:
+                    st.markdown(f"- **{o['outlet']}** · POS: `{o['pos']}` · Z: `{o['zmt_rk']}`/`{o['zmt_rf']}` · S: `{o['swg_rk']}`/`{o['swg_rf']}`")
+
+        # Manual add outlet
+        st.markdown('<div class="section-label">Add / Update an Outlet</div>', unsafe_allow_html=True)
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        tl_options = sorted(st.session_state.mapping.keys())
+        sel_tl = st.selectbox("Team Leader", tl_options, key="add_tl")
+        c1, c2 = st.columns(2)
+        with c1:
+            new_outlet = st.text_input("Outlet Name (Subzone)", key="new_outlet")
+            new_pos    = st.text_input("POS ID", key="new_pos")
+            new_zrk    = st.text_input("Zomato ID (RK)", key="new_zrk")
+            new_zrf    = st.text_input("Zomato ID (RF)", key="new_zrf")
+        with c2:
+            new_srk    = st.text_input("Swiggy ID (RK)", key="new_srk")
+            new_srf    = st.text_input("Swiggy ID (RF)", key="new_srf")
+
+        if st.button("Add Outlet to Mapping"):
+            if new_outlet and new_pos:
+                st.session_state.mapping[sel_tl].append({
+                    'outlet': new_outlet.strip(),
+                    'pos': safe_id(new_pos),
+                    'zmt_rk': safe_id(new_zrk) if new_zrk else None,
+                    'zmt_rf': safe_id(new_zrf) if new_zrf else None,
+                    'swg_rk': safe_id(new_srk) if new_srk else None,
+                    'swg_rf': safe_id(new_srf) if new_srf else None,
+                })
+                st.success(f"✓ Added {new_outlet} to {sel_tl.split('(')[0].strip()}")
+                st.rerun()
+            else:
+                st.warning("Outlet Name and POS ID are required.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    else:
+        st.info("No mapping loaded yet. Upload your mapping file above.")
+
 # ── FOOTER ────────────────────────────────────────────────────────────────────
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
-st.markdown(
-    '<p style="color:#444;font-size:0.75rem;text-align:center;">RollsKing Internal Tool · Files are not stored · Session only</p>',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div style='text-align:center; color:#444; font-size:0.75rem; padding:2rem 0 1rem;'>
+    RollsKing Internal Tools · Built for Operations
+</div>
+""", unsafe_allow_html=True)
