@@ -173,24 +173,49 @@ def detect_file_type(file_bytes, filename):
 
 # ── LOAD MAPPING FROM STORED JSON ─────────────────────────────────────────────
 def parse_mapping_from_wb(wb):
-    """Parse mapping from Nov-style Sheet1."""
+    """Parse mapping — supports both Nov Sheet1 format and old Manager to Res ID format."""
     mapping = {}
     sheet = None
+    sheet_format = None
+
     for name in wb.sheetnames:
-        if name.lower() in ('sheet1',) or 'mapping' in name.lower():
-            sheet = wb[name]; break
+        n = name.lower().strip()
+        if n == 'sheet1' or 'mapping' in n:
+            sheet = wb[name]; sheet_format = 'new'; break
+        if 'manager' in n and 'res' in n:
+            sheet = wb[name]; sheet_format = 'old'; break
+
     if not sheet:
-        return None, "Could not find mapping sheet (expected 'Sheet1')"
+        available = ", ".join(f"\'{s}\'" for s in wb.sheetnames)
+        return None, (
+            f"Could not find a mapping sheet. "
+            f"Sheets found in this file: {available}. "
+            f"Please upload Nov_Month_Data.xlsx or the Manager to Res ID file."
+        )
+
     for row in sheet.iter_rows(min_row=2, values_only=True):
         if not row[0]: continue
-        subzone = str(row[0]).strip()
-        pos_id  = safe_id(row[1])
-        zone    = str(row[2]).strip() if row[2] else ''
-        asm     = str(row[3]).strip() if row[3] else ''
-        zmt_rk  = safe_id(row[4])
-        zmt_rf  = safe_id(row[5])
-        swg_rk  = safe_id(row[6])
-        swg_rf  = safe_id(row[7])
+
+        if sheet_format == 'old':
+            # Old format: Manager name, Outlet name, Zomato RK, Swiggy RK, Zomato RF, Swiggy RF, PetPooja ID
+            asm     = str(row[0]).strip() if row[0] else ''
+            subzone = str(row[1]).strip() if row[1] else ''
+            zmt_rk  = safe_id(row[2])
+            swg_rk  = safe_id(row[3])
+            zmt_rf  = safe_id(row[4])
+            swg_rf  = safe_id(row[5])
+            pos_id  = safe_id(row[6])
+        else:
+            # New format (Sheet1): Subzone, POS ID, Zone, ASM, Zomato RK, Zomato RF, Swiggy RK, Swiggy RF
+            subzone = str(row[0]).strip() if row[0] else ''
+            pos_id  = safe_id(row[1])
+            asm     = str(row[3]).strip() if row[3] else ''
+            zmt_rk  = safe_id(row[4])
+            zmt_rf  = safe_id(row[5])
+            swg_rk  = safe_id(row[6])
+            swg_rf  = safe_id(row[7])
+
+        if not asm or not subzone: continue
         if asm not in mapping: mapping[asm] = []
         mapping[asm].append({
             'outlet': subzone, 'pos': pos_id,
