@@ -303,18 +303,32 @@ def load_monthly_raw(wb):
                 fc_pct = None
             food_cost[pos] = {'fc_pct': fc_pct, 'net_sale': net_sale}
 
-    # ── Ratings from Zomato ───────────────────────────────────────────────────
-    # We'll use Zomato average rating keyed by res_id; match to outlet via mapping
+    # ── Delivered Orders (Zomato + Swiggy combined) ─────────────────────────────
+    # Used for month-on-month sales growth scoring
+    delivered = {}  # {res_id: total_delivered_orders}
+    for res_id, data in zmt.items():
+        delivered[res_id] = delivered.get(res_id, 0) + data.get('orders', 0)
+    if swg_sheet:
+        for name in wb.sheetnames:
+            if 'swiggy' in name.lower():
+                ws2 = wb[name]
+                for row in ws2.iter_rows(min_row=2, values_only=True):
+                    res_id = safe_id(row[0])
+                    metric = str(row[5]).strip() if row[5] else ''
+                    value  = row[6]
+                    if res_id and metric in ('Delivered Orders', 'Orders') and value:
+                        delivered[res_id] = delivered.get(res_id, 0) + safe_f(value)
 
-    return zmt, swg, food_cost
+    return zmt, swg, food_cost, delivered
 
 # ── CALCULATOR (new format) ───────────────────────────────────────────────────
-def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores):
+def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores, prev_delivered=None):
     results, disclaimers, flags = [], [], []
 
     for tl, outlets in mapping.items():
         n = len(outlets)
         tl_c = tl_k = tl_r = tl_fc = tl_av = 0
+        tl_sales_pts = 0
         outlet_rows = []
 
         for o in outlets:
@@ -428,13 +442,29 @@ def calculate_new(mapping, zmt, swg, food_cost, hygiene_scores):
                 'notes': "; ".join(notes) if notes else "OK"
             })
 
+        # ── SALES (month-on-month growth) ────────────────────────────────────────
+        if prev_delivered is not None:
+            all_ids = []
+            for o in outlets:
+                all_ids += [x for x in [o['zmt_rk'], o['zmt_rf'], o['swg_rk'], o['swg_rf']] if x]
+            curr_total = sum(zmt.get(i, {}).get('orders', 0) for i in all_ids)
+            # Also add swiggy delivered orders for current month
+            for i in all_ids:
+                if i in swg:
+                    curr_total += swg[i].get('orders', 0)
+            prev_total = sum(prev_delivered.get(i, 0) for i in all_ids)
+            if prev_total > 0:
+                tl_sales_pts = 1 if curr_total > prev_total else 0
+            else:
+                tl_sales_pts = 0  # No baseline — can't score
+
         hyg_val    = hygiene_scores.get(tl, 0)
-        total_pts  = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av
+        total_pts  = tl_c + tl_k + tl_r + tl_fc + hyg_val + tl_av + tl_sales_pts
         avg_score  = round(total_pts / n, 1) if n > 0 else 0
         tier       = score_tier(avg_score)
 
         results.append({
-            'tl': tl, 'outlets': n, 'sales_pts': 0,
+            'tl': tl, 'outlets': n, 'sales_pts': tl_sales_pts,
             'fc_pts': tl_fc, 'cmp_pts': tl_c, 'kpt_pts': tl_k,
             'rat_pts': tl_r, 'hyg_pts': hyg_val, 'avail_pts': tl_av,
             'total_pts': total_pts, 'avg_score': avg_score,
@@ -757,6 +787,7 @@ def build_pdf_report(results, flags, disclaimers, month):
         ['Rating','4.0 or above = 1pt | Below 4.0 = 0pt','Zomato Average Rating'],
         ['Food Cost','Under 40% = 1pt | 40% or above = 0pt','Food Cost Compile Sheet'],
         ['Availability','98% or above = 1pt | Below 98% = 0pt','Swiggy Online Availability'],
+        ['Sales','Current month orders > prev month = 1pt | Decline = 0pt','Zomato + Swiggy Delivered Orders'],
         ['Hygiene','Manual input each month','Surprise visit scores'],
         ['Grade','Bronze 0-3 | Silver 3-6 | Gold 6-8 | Platinum 8+','Total Avg / Outlets']]
     ktbl=Table(kd,colWidths=[28*mm,82*mm,70*mm])
@@ -1048,13 +1079,30 @@ with tab_report:
         if st.button("⚡ Generate Report"):
             with st.spinner("Processing data... this takes about 10–20 seconds"):
                 try:
-                    all_zmt, all_swg, all_fc = {}, {}, {}
-                    for d in valid_files:
-                        zmt, swg, fc = load_monthly_raw(d["wb"])
-                        all_zmt.update(zmt); all_swg.update(swg); all_fc.update(fc)
+                    all_zmt, all_swg, all_fc, all_del = {}, {}, {}, {}
+                    prev_del = {}
+
+                    # Sort files: identify current vs previous month by filename
+                    # Current month = the one matching sel_month, previous = the other
+                    curr_month_key = sel_month[:3].lower()  # e.g. "jan", "dec"
+                    curr_files = [d for d in valid_files if curr_month_key in d["name"].lower()]
+                    prev_files = [d for d in valid_files if curr_month_key not in d["name"].lower()]
+                    # Fallback: if can't distinguish, treat all as current
+                    if not curr_files:
+                        curr_files = valid_files
+
+                    for d in curr_files:
+                        zmt, swg, fc, delivered = load_monthly_raw(d["wb"])
+                        all_zmt.update(zmt); all_swg.update(swg)
+                        all_fc.update(fc); all_del.update(delivered)
+
+                    for d in prev_files:
+                        _, _, _, prev_delivered = load_monthly_raw(d["wb"])
+                        prev_del.update(prev_delivered)
 
                     results, disclaimers, flags = calculate_new(
-                        mapping, all_zmt, all_swg, all_fc, hygiene_scores
+                        mapping, all_zmt, all_swg, all_fc, hygiene_scores,
+                        prev_delivered=prev_del if prev_del else None
                     )
                     excel_bytes = build_excel(results, disclaimers, flags, sel_month)
                     month_slug  = sel_month.replace(" ", "_")
