@@ -79,9 +79,11 @@ def score_fc(pct):
     return 1 if pct < 40 else 0
 
 def score_kpt(avg_min):
-    """< 12 min = 1pt | >= 12 min = 0pt"""
+    """floor(avg) <= 12 = 1pt | floor(avg) > 12 = 0pt
+    Confirmed: manual applies floor() then <= 12 threshold"""
     if avg_min is None: return 0
-    return 1 if avg_min < 12 else 0
+    import math
+    return 1 if math.floor(avg_min) <= 12 else 0
 
 def score_rating(avg):
     """>= 4.0 = 1pt | < 4.0 = 0pt"""
@@ -288,7 +290,7 @@ def load_swiggy(wb):
                             'missing':0,'quality':0,'quantity':0,'wrong':0,'packaging':0}
             if   metric in ('Delivered Orders','Orders'):
                 swg[rid]['orders']    = safe_f(val)
-            elif metric == 'Kitchen Prep Time':
+            elif metric == 'Avg Prep Time':
                 swg[rid]['kpt']       = parse_min(val)
             elif metric == 'Online Availability %':
                 swg[rid]['avail']     = parse_pct(val)
@@ -471,15 +473,15 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, curr_sales=None):
                 flags.append((tl, outlet, "High Complaints", f"{cmp_pct:.1f}%", ">=3%", cmp_pts))
 
             # ── KPT ──────────────────────────────────────────────────────────
-            # Formula: Avg of KPT (in minutes) [Zomato] + Kitchen Prep Time [Swiggy]
-            # for all available IDs (RK + RF where available)
+            # Formula (confirmed): Avg of Zomato RK KPT + Swiggy RK Avg Prep Time
+            # RF excluded — confirmed from manual report analysis
+            z_rk_id  = o.get('zmt_rk')
+            s_rk_id  = o.get('swg_rk')
             kpt_vals = []
-            for r in zids:
-                if r in zmt and zmt[r].get('kpt') is not None:
-                    kpt_vals.append(zmt[r]['kpt'])
-            for s in sids:
-                if s in swg and swg[s].get('kpt') is not None:
-                    kpt_vals.append(swg[s]['kpt'])
+            if z_rk_id and z_rk_id in zmt and zmt[z_rk_id].get('kpt') is not None and zmt[z_rk_id]['kpt'] > 0:
+                kpt_vals.append(zmt[z_rk_id]['kpt'])
+            if s_rk_id and s_rk_id in swg and swg[s_rk_id].get('kpt') is not None and swg[s_rk_id]['kpt'] > 0:
+                kpt_vals.append(swg[s_rk_id]['kpt'])
 
             if kpt_vals:
                 avg_kpt = round(sum(kpt_vals) / len(kpt_vals), 2)
@@ -493,8 +495,10 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, curr_sales=None):
                 disclaimers.append(f"{tl} | {outlet}: KPT missing — scored 0")
 
             tl_kpt += kpt_pts
-            if avg_kpt is not None and avg_kpt >= 12:
-                flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", ">=12 min", kpt_pts))
+            if avg_kpt is not None and avg_kpt > 0:
+                import math
+                if math.floor(avg_kpt) > 12:
+                    flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", "floor>12", kpt_pts))
 
             # ── RATING ───────────────────────────────────────────────────────
             # Formula: Avg of Average rating [Zomato] for all available IDs
@@ -561,10 +565,22 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, curr_sales=None):
                 flags.append((tl, outlet, "High Food Cost", f"{fc_pct:.1f}%", ">=40%", fc_pts))
 
             # ── SALE (Month-on-Month via PetPooja Net Sale + PC) ─────────────
-            # Scored at outlet level; summed to TL level below
+            # Scored per outlet: 1pt if this outlet beat last month, 0 if not
+            # Summed across all outlets under TL
             curr_ns = fc_data['net_sale'] if fc_data else None
-            sale_pts_out = 0  # calculated at TL level below using prev month
-            prev_ns  = None   # placeholder — prev month loaded separately
+            prev_ns = prev_sales.get(pos, {}).get('net_sale') if prev_sales else None
+
+            if curr_ns is not None and prev_ns is not None and prev_ns > 0:
+                outlet_sale_pt = 1 if curr_ns > prev_ns else 0
+                sale_src = f"₹{curr_ns:,.0f} vs ₹{prev_ns:,.0f}"
+            elif curr_ns is not None and prev_ns is None:
+                outlet_sale_pt = 0
+                sale_src = "No prev month data"
+            else:
+                outlet_sale_pt = 0
+                sale_src = "No sale data"
+
+            tl_sale += outlet_sale_pt
 
             outlet_rows.append({
                 'outlet':     outlet,
@@ -577,39 +593,34 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, curr_sales=None):
                 'fc_pct':     fc_pct,    'fc_pts':    fc_pts,
                 'hyg_score':  fc_data.get('hygiene_score', 0) if fc_data else 0,
                 'curr_sale':  curr_ns,
+                'sale_pts':   outlet_sale_pt,
+                'sale_src':   sale_src,
                 'notes':      "; ".join(notes) if notes else "OK",
             })
 
-        # ── SALE — TL level (MOM comparison using Net Sale + PC from food cost sheet) ──
-        # Current month net sale = sum of all outlets under TL from fc sheet
-        # Previous month net sale = from prev month fc sheet (passed in as prev_sales)
-        curr_tl_sale = sum(r['curr_sale'] for r in outlet_rows if r['curr_sale'])
-        prev_tl_sale = 0
-        if prev_sales:
-            for o in outlets:
-                pos = o['pos']
-                if pos in prev_sales:
-                    prev_tl_sale += prev_sales[pos].get('net_sale', 0)
+        # ── SALE SUMMARY NOTE ─────────────────────────────────────────────────
+        # Sale points already accumulated per-outlet into tl_sale above
+        grew_outlets   = sum(1 for r in outlet_rows if r['sale_pts'] == 1)
+        total_outlets  = len(outlet_rows)
+        curr_tl_sale   = sum(r['curr_sale'] for r in outlet_rows if r['curr_sale'])
+        prev_tl_sale   = sum(
+            prev_sales.get(o['pos'], {}).get('net_sale', 0)
+            for o in outlets
+        ) if prev_sales else 0
 
         if prev_tl_sale > 0:
-            sale_pts  = 1 if curr_tl_sale > prev_tl_sale else 0
-            sale_note = f"₹{curr_tl_sale:,.0f} vs ₹{prev_tl_sale:,.0f} prev"
+            sale_note = f"{grew_outlets}/{total_outlets} outlets grew | ₹{curr_tl_sale:,.0f} vs ₹{prev_tl_sale:,.0f}"
         else:
-            sale_pts  = 0
-            sale_note = "No prev month data"
-            if curr_tl_sale > 0:
-                disclaimers.append(f"{tl}: prev month file not uploaded — sale scored 0")
-
-        tl_sale = sale_pts
+            sale_note = "No prev month data — sale scored 0"
 
         # ── TOTALS ────────────────────────────────────────────────────────────
         total_pts = tl_cmp + tl_kpt + tl_rat + tl_fc + tl_av + tl_hyg + tl_sale
         avg_score = round(total_pts / n, 2) if n > 0 else 0
         tier      = score_tier(avg_score)
 
-        if curr_tl_sale < prev_tl_sale and prev_tl_sale > 0:
+        if prev_tl_sale > 0 and curr_tl_sale < prev_tl_sale:
             flags.append((tl, "ALL OUTLETS", "Sales Decline",
-                          f"₹{curr_tl_sale:,.0f}", f"Prev ₹{prev_tl_sale:,.0f}", sale_pts))
+                          f"₹{curr_tl_sale:,.0f}", f"Prev ₹{prev_tl_sale:,.0f}", tl_sale))
 
         results.append({
             'tl':           tl,
@@ -649,7 +660,7 @@ def build_excel(results, disclaimers, flags, month):
 
     ws1.merge_cells("A2:L2")
     c = ws1["A2"]
-    c.value     = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  Scoring: Complaints(0-4) + KPT(0-1) + Rating(0-1) + FC(0-1) + Avail(0-1) + Hygiene(sum) + Sale(0-1)"
+    c.value     = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  Scoring: Sale(per outlet) + FC(0-1) + Complaints(0-4) + KPT(0-1) + Rating(0-1) + Avail(0-1) + Hygiene(sum)"
     c.font      = Font(size=8, color="FFFFFF", italic=True, name="Arial")
     c.fill      = PatternFill("solid", start_color=CLR["hm"])
     c.alignment = Alignment(horizontal="center", vertical="center")
@@ -704,10 +715,10 @@ def build_excel(results, disclaimers, flags, month):
     c.alignment = Alignment(horizontal="left", vertical="center")
 
     conds = [
-        ["Sale",         "Current month Net Sale + PC > prev month = 1pt | Decline = 0pt",       "PetPooja food cost sheet"],
+        ["Sale",         "1pt per outlet that beat prev month Net Sale — summed per TL",       "PetPooja food cost sheet"],
         ["Food Cost",    "< 40% = 1pt | >= 40% = 0pt",                                            "Food cost sheet (calculated)"],
         ["Complaints",   "0-<1% = 4pts | 1-<2% = 3pts | 2-<3% = 1pt | >=3% = 0pt",              "Zomato + Swiggy blended"],
-        ["KPT",          "< 12 min = 1pt | >= 12 min = 0pt",                                      "Avg of Zomato KPT + Swiggy Kitchen Prep Time"],
+        ["KPT",          "< 12 min = 1pt | >= 12 min = 0pt",                                      "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"],
         ["Rating",       ">= 4.0 = 1pt | < 4.0 = 0pt",                                           "Zomato Average Rating (all available IDs)"],
         ["Hygiene",      "Sum of outlet hygiene scores from food cost sheet",                      "Hygiene Score column in food cost file"],
         ["Availability", ">= 98% = 1pt | < 98% = 0pt",                                           "Avg of Zomato Online% + Swiggy Online Availability%"],
@@ -740,6 +751,7 @@ def build_excel(results, disclaimers, flags, month):
     ws2.row_dimensions[1].height = 22
 
     od_hdrs = ["Team Leader","Outlet","POS ID","RK Only",
+               "Sale Pts","Sale Source",
                "Complaint %","Cmp Pts","Cmp Source",
                "KPT Avg (min)","KPT Pts",
                "Rating","Rat Pts",
@@ -755,6 +767,7 @@ def build_excel(results, disclaimers, flags, month):
             bg = CLR["lg"] if row_num % 2 == 0 else CLR["wh"]
             vals = [
                 r['tl'], o['outlet'], o['pos'], "Yes" if o['rk_only'] else "",
+                o.get('sale_pts',0), o.get('sale_src',''),
                 o['cmp_pct'], o['cmp_pts'], o['cmp_src'],
                 o['kpt_avg'], o['kpt_pts'],
                 o['rat_avg'], o['rat_pts'],
@@ -768,15 +781,16 @@ def build_excel(results, disclaimers, flags, month):
                 c.fill      = PatternFill("solid", start_color=bg)
                 c.border    = thin_border()
                 c.alignment = Alignment(
-                    horizontal="left" if col in (1,2,7,9,17) else "center",
+                    horizontal="left" if col in (1,2,6,9,19) else "center",
                     vertical="center")
             ws2.row_dimensions[row_num].height = 16
             row_num += 1
 
     ws2.column_dimensions["A"].width = 20
     ws2.column_dimensions["B"].width = 24
-    ws2.column_dimensions["Q"].width = 30
-    for col_l in [get_column_letter(i) for i in range(3, 17)]:
+    ws2.column_dimensions["F"].width = 22
+    ws2.column_dimensions["S"].width = 30
+    for col_l in [get_column_letter(i) for i in range(3, 19) if i not in (2,6,19)]:
         ws2.column_dimensions[col_l].width = 11
 
     # ── Sheet 3: Flagged Outlets ──────────────────────────────────────────────
@@ -838,6 +852,8 @@ def build_pdf(results, flags, disclaimers, month):
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
     import numpy as np
+    # Close any open figures to prevent memory issues on Streamlit Cloud
+    plt.close('all')
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import mm
@@ -946,7 +962,7 @@ def build_pdf(results, flags, disclaimers, month):
         tls   = [r['tl'].split('(')[0].strip() for r in sr]
         n_tl  = len(tls); n_m = len(mkeys)
         mxo   = max(r['outlets'] for r in results)
-        max_pts = {"sales_pts":1,"fc_pts":mxo,"cmp_pts":4*mxo,"kpt_pts":mxo,
+        max_pts = {"sales_pts":mxo,"fc_pts":mxo,"cmp_pts":4*mxo,"kpt_pts":mxo,
                    "rat_pts":mxo,"hyg_pts":mxo,"avail_pts":mxo}
         fig, ax = plt.subplots(figsize=(11,5.5))
         fig.patch.set_facecolor(C_BG); ax.set_facecolor(C_BG)
@@ -1083,10 +1099,10 @@ def build_pdf(results, flags, disclaimers, month):
     story.append(sh("Scoring Reference")); story.append(gr())
     key_data = [
         ['Metric','Rule','Source'],
-        ['Sale','Current Net Sale+PC > prev month = 1pt | Decline = 0pt','PetPooja via food cost sheet'],
+        ['Sale','1pt per outlet beating prev month Net Sale — summed per TL','PetPooja food cost sheet (Net Sale + PC)'],
         ['Food Cost','< 40% = 1pt | >= 40% = 0pt','((Opening+Local+Store)-Closing)/NetSale*100'],
         ['Complaints','0-<1%=4pts | 1-<2%=3pts | 2-<3%=1pt | >=3%=0pt','Zomato + Swiggy blended % of total orders'],
-        ['KPT','< 12 min = 1pt | >= 12 min = 0pt','Avg of Zomato KPT + Swiggy Kitchen Prep Time'],
+        ['KPT','< 12 min = 1pt | >= 12 min = 0pt','Avg of Zomato RK KPT + Swiggy RK Avg Prep Time'],
         ['Rating','>= 4.0 = 1pt | < 4.0 = 0pt','Zomato Average Rating (all available IDs)'],
         ['Hygiene','Sum of Hygiene Score column per TL','Hygiene Score column in food cost sheet'],
         ['Availability','>= 98% = 1pt | < 98% = 0pt','Avg of Zomato Online% + Swiggy Online Availability%'],
@@ -1247,19 +1263,23 @@ with tab_report:
                         st.session_state.pdf_bytes = pdf_bytes
                         st.session_state.pdf_name  = f"RollsKing_Report_{month_slug}.pdf"
                         pdf_ok = True
-                    except Exception:
+                    except Exception as pdf_err:
+                        import traceback
                         st.session_state.pdf_bytes = None
+                        st.session_state._pdf_error = traceback.format_exc()
                         pdf_ok = False
 
-                    grew = sum(1 for r in results if r['sales_pts'] == 1)
-                    sale_note = f" · {grew}/{len(results)} TLs grew sales vs prev month" if prev_fc \
+                    total_sale_pts = sum(r['sales_pts'] for r in results)
+                    total_possible = sum(r['outlets'] for r in results)
+                    sale_note = f" · {total_sale_pts}/{total_possible} outlets grew sales" if prev_fc \
                                 else " · Upload prev month file for sale scoring"
 
                     st.success(f"✓ Report ready — {len(results)} TLs · "
                                f"{sum(r['outlets'] for r in results)} Outlets · "
                                f"{len(flags)} Flags{sale_note}")
                     if not pdf_ok:
-                        st.warning("PDF unavailable — Excel is ready.")
+                        st.warning("PDF failed — see error below:")
+                        st.code(st.session_state.get('_pdf_error','unknown error'))
 
                 except Exception as e:
                     st.error(f"Error: {e}")
@@ -1282,6 +1302,11 @@ with tab_report:
                     data=st.session_state.pdf_bytes,
                     file_name=st.session_state.pdf_name,
                     mime="application/pdf")
+            else:
+                err = st.session_state.get('_pdf_error','')
+                if err:
+                    with st.expander("⚠ PDF error — click to see"):
+                        st.code(err)
 
 # ── TAB 2: MANAGE MAPPING ─────────────────────────────────────────────────────
 with tab_mapping:
