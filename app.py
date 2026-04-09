@@ -49,22 +49,11 @@ def safe_f(v, d=0.0):
         return d
 
 def parse_pct(v):
-    """Parse a percentage value to a float in range 0-100.
-    Handles two formats:
-      - String with % sign e.g. '5.75%', '0.69%', '98.51%' -> already a %, use as-is
-      - Plain float/int e.g. 99.22, 0 (Zomato Online %) -> already a %, use as-is
-      - Decimal fraction e.g. 0.9904 (rare) -> multiply by 100
-    Rule: if the original value had a '%' sign, never multiply. Otherwise only
-    multiply if value is between 0 and 1 exclusive (i.e. a decimal fraction).
-    """
     if v is None: return None
     try:
-        s = str(v).strip()
-        has_pct = '%' in s
-        f = float(s.replace('%', '').strip())
-        if has_pct:
-            return f          # already a percentage — never multiply
-        return f if f >= 1 or f == 0 else f * 100   # plain decimal fraction
+        s = str(v).replace('%','').strip()
+        f = float(s)
+        return f if f > 1 else f * 100
     except:
         return None
 
@@ -79,7 +68,6 @@ def parse_min(v):
 def score_complaints(pct):
     """0-1% = 4pts | 1-2% = 3pts | 2-3% = 1pt | >=3% = 0pt"""
     if pct is None: return 0
-    pct = max(pct, 0)   # guard: negative % (data anomaly) treated as 0
     if pct < 1:     return 4
     if pct < 2:     return 3
     if pct < 3:     return 1
@@ -431,6 +419,77 @@ def load_petpooja_sales(wb):
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN CALCULATOR
 # ══════════════════════════════════════════════════════════════════════════════
+def audit_mapping(mapping, zmt, swg, fc, inactive_pos=None):
+    """
+    Checks every outlet's IDs against what actually exists in the uploaded files.
+    Returns a list of discrepancy dicts — one row per missing/mismatched ID.
+    """
+    inactive_pos = inactive_pos or set()
+    issues = []
+
+    zmt_ids = set(zmt.keys())
+    swg_ids = set(swg.keys())
+    fc_pos  = set(fc.keys())
+
+    for tl, outlets in mapping.items():
+        for o in outlets:
+            outlet = o['outlet']
+            pos    = o['pos']
+            if pos in inactive_pos:
+                continue
+
+            # ── Zomato RK ─────────────────────────────────────────────────────
+            zmt_rk = o.get('zmt_rk')
+            if zmt_rk is None:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
+                                'brand': 'RK', 'id': '—',
+                                'issue': 'ID not configured in mapping',
+                                'impact': 'Complaints / KPT / Rating / Availability scored 0'})
+            elif zmt_rk not in zmt_ids:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
+                                'brand': 'RK', 'id': str(zmt_rk),
+                                'issue': 'ID not found in uploaded Zomato file',
+                                'impact': 'Complaints / KPT / Rating / Availability scored 0'})
+
+            # ── Zomato RF (only if RF expected) ───────────────────────────────
+            zmt_rf = o.get('zmt_rf')
+            if zmt_rf and zmt_rf not in zmt_ids:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
+                                'brand': 'RF', 'id': str(zmt_rf),
+                                'issue': 'ID not found in uploaded Zomato file',
+                                'impact': 'RF data excluded from Complaints / Rating / Availability'})
+
+            # ── Swiggy RK ─────────────────────────────────────────────────────
+            swg_rk = o.get('swg_rk')
+            if swg_rk is None:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
+                                'brand': 'RK', 'id': '—',
+                                'issue': 'ID not configured in mapping',
+                                'impact': 'Complaints / KPT / Availability scored 0 (Swiggy side)'})
+            elif swg_rk not in swg_ids:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
+                                'brand': 'RK', 'id': str(swg_rk),
+                                'issue': 'ID not found in uploaded Swiggy file',
+                                'impact': 'Complaints / KPT / Availability scored 0 (Swiggy side)'})
+
+            # ── Swiggy RF (only if RF expected) ───────────────────────────────
+            swg_rf = o.get('swg_rf')
+            if swg_rf and swg_rf not in swg_ids:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
+                                'brand': 'RF', 'id': str(swg_rf),
+                                'issue': 'ID not found in uploaded Swiggy file',
+                                'impact': 'RF data excluded from Complaints / Availability (Swiggy)'})
+
+            # ── Food Cost / POS ───────────────────────────────────────────────
+            if pos and pos not in fc_pos:
+                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Food Cost Sheet',
+                                'brand': '—', 'id': str(pos),
+                                'issue': 'POS ID not found in uploaded food cost file',
+                                'impact': 'Food Cost scored 0 / Hygiene scored 0 / Sale scored 0'})
+
+    return issues
+
+
 def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
     results     = []
     disclaimers = []
@@ -474,20 +533,18 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                     s_has_cmp = True
 
             total_orders = z_orders + s_orders
-            total_comps  = int(z_comps + s_comps)   # raw count, stored for Excel output
+            total_comps  = z_comps + s_comps
 
             if total_orders > 0:
                 cmp_pct  = round(total_comps / total_orders * 100, 2)
-                cmp_pct  = max(cmp_pct, 0)           # safety: clamp negative to 0
                 cmp_pts  = score_complaints(cmp_pct)
                 cmp_src  = "RK only" if rk_only else "Swiggy+Zomato"
                 if not s_has_cmp and z_orders > 0:
                     cmp_src = "Zomato only (Swiggy missing)"
             else:
-                cmp_pct   = None
-                cmp_pts   = 0
-                cmp_src   = "No data"
-                total_comps = 0
+                cmp_pct  = None
+                cmp_pts  = 0
+                cmp_src  = "No data"
                 notes.append("No complaint data")
                 disclaimers.append(f"{tl} | {outlet}: complaint data missing — scored 0")
 
@@ -609,7 +666,6 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 'outlet':     outlet,
                 'pos':        pos,
                 'rk_only':    rk_only,
-                'cmp_count':  total_comps,
                 'cmp_pct':    cmp_pct,   'cmp_pts':   cmp_pts,  'cmp_src':  cmp_src,
                 'kpt_avg':    avg_kpt,   'kpt_pts':   kpt_pts,  'kpt_src':  kpt_src,
                 'rat_avg':    avg_rat,   'rat_pts':   rat_pts,  'rat_src':  rat_src,
@@ -670,7 +726,7 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
 # EXCEL REPORT BUILDER
 # ══════════════════════════════════════════════════════════════════════════════
 
-def build_excel(results, disclaimers, flags, month):
+def build_excel(results, disclaimers, flags, month, discrepancies=None):
     wb = openpyxl.Workbook()
 
     # ── Light colour palette ──────────────────────────────────────────────────
@@ -805,7 +861,7 @@ def build_excel(results, disclaimers, flags, month):
     od_hdrs = [
         ("Team Leader",20), ("Outlet",24), ("Brands",10),
         ("Net Sale (₹)",14), ("Prev Sale (₹)",14),
-        ("Food Cost %",11), ("Complaints",11), ("Complaint %",11),
+        ("Food Cost %",11), ("Complaint %",11),
         ("KPT (min)",10), ("Rating",9), ("Availability %",13),
         ("Hygiene",9), ("Notes",28),
     ]
@@ -828,13 +884,13 @@ def build_excel(results, disclaimers, flags, month):
             vals = [
                 r['tl'], o['outlet'], brand,
                 o.get('curr_sale'), o.get('prev_ns'),   # net sale, prev sale
-                o['fc_pct'], o.get('cmp_count'), o['cmp_pct'],
+                o['fc_pct'], o['cmp_pct'],
                 o['kpt_avg'], o['rat_avg'], o['avail_pct'],
                 o['hyg_score'], o['notes'],
             ]
-            bgs    = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
-            aligns = ["left","left","center","center","center","center","center","center","center","center","center","center","left"]
-            fmts   = [None,None,None,'#,##0','#,##0','0.00','0','0.00','0.0','0.00','0.0',None,None]
+            bgs = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
+            aligns = ["left","left","center","center","center","center","center","center","center","center","center","left"]
+            fmts   = [None,None,None,'#,##0','#,##0','0.00','0.00','0.0','0.00','0.0',None,None]
             for ci,(v,b,al,fm) in enumerate(zip(vals,bgs,aligns,fmts),1):
                 dc(ws2, row_num, ci, v, bg=b, align=al, fmt=fm, bold=(ci==1))
             ws2.row_dimensions[row_num].height = 16
@@ -861,25 +917,116 @@ def build_excel(results, disclaimers, flags, month):
             dc(ws3, i, ci, v, bg=bg, align="left" if ci<=2 else "center")
         ws3.row_dimensions[i].height = 15
 
-    # ── SHEET 4: Data Notes ───────────────────────────────────────────────────
-    ws4 = wb.create_sheet("Data Notes")
-    ws4.merge_cells("A1:B1")
+    # ── SHEET 4: Data Discrepancy ─────────────────────────────────────────────
+    discrepancies = discrepancies or []
+    ws4 = wb.create_sheet("Data Discrepancy")
+    ws4.sheet_view.showGridLines = False
+
+    DISC_HDR = "7B2D00"  # dark orange — distinct from flags red
+    disc_cols = [
+        ("Team Leader", 20), ("Outlet", 24), ("Platform", 16),
+        ("Brand", 8), ("ID in Mapping", 16),
+        ("Issue", 42), ("Impact on Score", 48),
+    ]
+
+    ws4.merge_cells(f"A1:{get_column_letter(len(disc_cols))}1")
     c = ws4["A1"]
+    disc_count = len(discrepancies)
+    c.value = (
+        f"Data Discrepancy Report — {month}  |  "
+        f"{disc_count} ID issue{'s' if disc_count != 1 else ''} detected"
+        if disc_count > 0
+        else f"Data Discrepancy Report — {month}  |  ✅ All IDs matched — no issues found"
+    )
+    c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
+    c.fill  = PatternFill("solid", start_color=DISC_HDR if disc_count > 0 else "1A5C2A")
+    c.alignment = Alignment(horizontal="center", vertical="center")
+    ws4.row_dimensions[1].height = 26
+
+    # Sub-header explaining the sheet
+    ws4.merge_cells(f"A2:{get_column_letter(len(disc_cols))}2")
+    c = ws4["A2"]
+    c.value = (
+        "These IDs are in the app mapping but were NOT found in the uploaded files. "
+        "The report still runs — affected metrics are scored 0. "
+        "Fix by updating the outlet mapping with the correct IDs."
+        if disc_count > 0
+        else "Every outlet ID in the mapping was found in the uploaded Zomato, Swiggy, and Food Cost files."
+    )
+    c.font = Font(size=8, color="FFFFFF", italic=True, name="Arial")
+    c.fill = PatternFill("solid", start_color="B34700" if disc_count > 0 else "2D7A3A")
+    c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    ws4.row_dimensions[2].height = 28
+
+    for ci, (h, w) in enumerate(disc_cols, 1):
+        hc(ws4, 3, ci, h, bg=DISC_HDR if disc_count > 0 else "1A5C2A")
+        ws4.column_dimensions[get_column_letter(ci)].width = w
+    ws4.row_dimensions[3].height = 20
+
+    if discrepancies:
+        # Group by TL for visual clarity
+        current_tl = None
+        row_num4 = 4
+        for d in sorted(discrepancies, key=lambda x: (x['tl'], x['outlet'], x['platform'])):
+            # TL separator row
+            if d['tl'] != current_tl:
+                current_tl = d['tl']
+                ws4.merge_cells(f"A{row_num4}:{get_column_letter(len(disc_cols))}{row_num4}")
+                c = ws4.cell(row=row_num4, column=1, value=f"  {current_tl}")
+                c.font  = Font(bold=True, size=9, color="FFFFFF", name="Arial")
+                c.fill  = PatternFill("solid", start_color="4A3000")
+                c.alignment = Alignment(horizontal="left", vertical="center")
+                c.border = thin_border()
+                ws4.row_dimensions[row_num4].height = 16
+                row_num4 += 1
+
+            bg = "FFF0E6"  # light orange tint for all discrepancy rows
+            vals = [
+                d['tl'], d['outlet'], d['platform'],
+                d['brand'], d['id'], d['issue'], d['impact'],
+            ]
+            aligns = ["left", "left", "center", "center", "center", "left", "left"]
+            for ci, (v, al) in enumerate(zip(vals, aligns), 1):
+                cell = ws4.cell(row=row_num4, column=ci, value=v)
+                cell.font = Font(
+                    size=8, name="Arial",
+                    bold=(ci in (1, 2)),
+                    color="5C1A00" if ci >= 6 else "222222"
+                )
+                cell.fill = PatternFill("solid", start_color=bg)
+                cell.alignment = Alignment(horizontal=al, vertical="center", wrap_text=(ci >= 6))
+                cell.border = thin_border()
+            ws4.row_dimensions[row_num4].height = 28
+            row_num4 += 1
+    else:
+        # All clear row
+        ws4.merge_cells(f"A4:{get_column_letter(len(disc_cols))}4")
+        c = ws4.cell(row=4, column=1,
+                     value="✅  All outlet IDs matched successfully. No discrepancies found.")
+        c.font = Font(bold=True, size=10, color="155724", name="Arial")
+        c.fill = PatternFill("solid", start_color="D4EDDA")
+        c.alignment = Alignment(horizontal="center", vertical="center")
+        ws4.row_dimensions[4].height = 24
+
+    # ── SHEET 5: Data Notes ───────────────────────────────────────────────────
+    ws5 = wb.create_sheet("Data Notes")
+    ws5.merge_cells("A1:B1")
+    c = ws5["A1"]
     c.value = f"Data Notes — {month}"
     c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
     c.fill  = PatternFill("solid", start_color=HDR)
     c.alignment = Alignment(horizontal="center", vertical="center")
-    ws4.row_dimensions[1].height = 22
+    ws5.row_dimensions[1].height = 22
     for ci,(h,w) in enumerate([("Outlet / TL",38),("Note",55)],1):
-        hc(ws4, 2, ci, h, bg=SUB)
-        ws4.column_dimensions[get_column_letter(ci)].width = w
+        hc(ws5, 2, ci, h, bg=SUB)
+        ws5.column_dimensions[get_column_letter(ci)].width = w
     for i,note in enumerate(disclaimers,3):
         parts = note.split("|",1)
         for ci,v in enumerate([parts[0].strip(), parts[1].strip() if len(parts)>1 else ""],1):
-            c = ws4.cell(row=i, column=ci, value=v)
+            c = ws5.cell(row=i, column=ci, value=v)
             c.font = Font(size=8, name="Arial", color="444444")
             c.border = thin_border()
-        ws4.row_dimensions[i].height = 14
+        ws5.row_dimensions[i].height = 14
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -1138,6 +1285,12 @@ with tab_report:
                     for d in prev_files:
                         prev_fc.update(load_food_cost(d["wb"]))
 
+                    # ── Run ID audit BEFORE calculating ──────────────────────
+                    discrepancies = audit_mapping(
+                        mapping, all_zmt, all_swg, all_fc,
+                        inactive_pos=st.session_state.inactive_pos
+                    )
+
                     results, disclaimers, flags = calculate(
                         mapping, all_zmt, all_swg, all_fc,
                         prev_sales=prev_fc if prev_fc else None,
@@ -1145,7 +1298,8 @@ with tab_report:
                     )
 
                     month_slug  = sel_month.replace(" ","_")
-                    excel_bytes = build_excel(results, disclaimers, flags, sel_month)
+                    excel_bytes = build_excel(results, disclaimers, flags, sel_month,
+                                             discrepancies=discrepancies)
                     st.session_state.report_bytes = excel_bytes
                     st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
 
@@ -1168,6 +1322,18 @@ with tab_report:
                     st.success(f"✓ Report ready — {len(results)} TLs · "
                                f"{sum(r['outlets'] for r in results)} Outlets · "
                                f"{len(flags)} Flags{sale_note}")
+
+                    # Show discrepancy warning inline if issues found
+                    if discrepancies:
+                        tls_affected = len(set(d['tl'] for d in discrepancies))
+                        st.warning(
+                            f"⚠️ **{len(discrepancies)} ID issue{'s' if len(discrepancies)!=1 else ''} detected** "
+                            f"across {tls_affected} TL{'s' if tls_affected!=1 else ''} — "
+                            f"affected metrics scored 0. See **Data Discrepancy** sheet in the Excel download for full details."
+                        )
+                    else:
+                        st.info("✅ All outlet IDs matched — no data discrepancies found.")
+
                     if not pdf_ok:
                         st.warning("PDF failed — see error below:")
                         st.code(st.session_state.get('_pdf_error','unknown error'))
