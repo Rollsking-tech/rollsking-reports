@@ -49,11 +49,22 @@ def safe_f(v, d=0.0):
         return d
 
 def parse_pct(v):
+    """Parse a percentage value to a float in range 0-100.
+    Handles two formats:
+      - String with % sign e.g. '5.75%', '0.69%', '98.51%' -> already a %, use as-is
+      - Plain float/int e.g. 99.22, 0 (Zomato Online %) -> already a %, use as-is
+      - Decimal fraction e.g. 0.9904 (rare) -> multiply by 100
+    Rule: if the original value had a '%' sign, never multiply. Otherwise only
+    multiply if value is between 0 and 1 exclusive (i.e. a decimal fraction).
+    """
     if v is None: return None
     try:
-        s = str(v).replace('%','').strip()
-        f = float(s)
-        return f if f > 1 else f * 100
+        s = str(v).strip()
+        has_pct = '%' in s
+        f = float(s.replace('%', '').strip())
+        if has_pct:
+            return f          # already a percentage — never multiply
+        return f if f >= 1 or f == 0 else f * 100   # plain decimal fraction
     except:
         return None
 
