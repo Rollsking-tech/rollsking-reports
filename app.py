@@ -54,13 +54,12 @@ def parse_pct(v):
         s = str(v).strip()
         has_pct = s.endswith('%')
         f = float(s.replace('%', '').strip())
-        # If the raw value had a % sign, it is already a percentage (e.g. "0.54%" = 0.54%)
-        # If no % sign and value is a decimal < 1, it's a proportion — multiply by 100
-        # If no % sign and value >= 1, it's already a percentage number (e.g. 96.5)
+        # String with % sign is already a percentage (e.g. "0.54%" = 0.54%)
+        # Decimal without % and < 1 is a proportion — multiply by 100
         if has_pct:
-            return f           # "0.54%" → 0.54,  "96.5%" → 96.5
+            return f
         else:
-            return f if f > 1 else f * 100  # 0.965 → 96.5,  96.5 → 96.5
+            return f if f > 1 else f * 100
     except:
         return None
 
@@ -172,7 +171,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Nathupur Gurugram",   "pos":108782, "zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475, "swg_rf":783922},
     {"outlet":"Old DLF Sec-14 Gurgaon","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
     {"outlet":"Sector-57 Gurugram",  "pos":74068,  "zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165, "swg_rf":803919},
-    {"outlet":"Wazirabad Gurugram",  "pos":108779, "zmt_rk":20582847,"zmt_rf":None,    "swg_rk":668467, "swg_rf":None},    # RK only
+    {"outlet":"Golf Course Sec-54 Gurugram","pos":108779, "zmt_rk":20582847,"zmt_rf":None,    "swg_rk":668467, "swg_rf":None},    # RK only; formerly Wazirabad
     {"outlet":"Gurugram Sec-82",     "pos":30407,  "zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106, "swg_rf":850542},
     {"outlet":"Sector 90 Gurugram",  "pos":380769, "zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
   ],
@@ -607,8 +606,7 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
             # ── AVAILABILITY ─────────────────────────────────────────────────
             # Formula: Avg of Online % [Zomato] + Online Availability % [Swiggy]
             # for all available IDs (RK + RF where available)
-            # Skip 0% values — 0% with 0 orders means outlet was offline/inactive
-            # that month, not genuinely 0% available. Treat as missing data.
+            # Skip 0% — means outlet was offline/inactive that month, not genuinely 0%
             avail_vals = []
             for r in zids:
                 v = zmt[r].get('online_pct') if r in zmt else None
@@ -675,6 +673,8 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 'pos':        pos,
                 'rk_only':    rk_only,
                 'cmp_pct':    cmp_pct,   'cmp_pts':   cmp_pts,  'cmp_src':  cmp_src,
+                'cmp_count':  int(total_comps) if total_orders > 0 else None,
+                'cmp_orders': int(total_orders) if total_orders > 0 else None,
                 'kpt_avg':    avg_kpt,   'kpt_pts':   kpt_pts,  'kpt_src':  kpt_src,
                 'rat_avg':    avg_rat,   'rat_pts':   rat_pts,  'rat_src':  rat_src,
                 'avail_pct':  avg_avail, 'avail_pts': avail_pts,'avail_src':avail_src,
@@ -833,7 +833,7 @@ def build_excel(results, disclaimers, flags, month, discrepancies=None):
         ("Sale",         "1pt per outlet that beat prev month Net Sale — summed per TL",    "PetPooja food cost sheet"),
         ("Food Cost",    "< 40% = 1pt | >= 40% = 0pt",                                      "Food cost sheet (calculated)"),
         ("Complaints",   "0-<1% = 4pts | 1-<2% = 3pts | 2-<3% = 1pt | >=3% = 0pt",        "Zomato + Swiggy blended"),
-        ("KPT",          "<= 12min = 1pt | > 12min = 0pt",                              "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"),
+        ("KPT",          "<= 12min = 1pt | > 12min = 0pt",                        "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"),
         ("Rating",       ">= 4.0 = 1pt | < 4.0 = 0pt",                                     "Zomato Average Rating (all available IDs)"),
         ("Hygiene",      "Sum of outlet hygiene scores (manually added to food cost sheet)", "Hygiene Score column in food cost file"),
         ("Availability", ">= 98% = 1pt | < 98% = 0pt",                                     "Avg of Zomato Online% + Swiggy Online Availability%"),
@@ -869,7 +869,7 @@ def build_excel(results, disclaimers, flags, month, discrepancies=None):
     od_hdrs = [
         ("Team Leader",20), ("Outlet",24), ("Brands",10),
         ("Net Sale (₹)",14), ("Prev Sale (₹)",14),
-        ("Food Cost %",11), ("Complaint %",11),
+        ("Food Cost %",11), ("Complaint %",11), ("Total Complaints",16),
         ("KPT (min)",10), ("Rating",9), ("Availability %",13),
         ("Hygiene",9), ("Notes",28),
     ]
@@ -891,14 +891,14 @@ def build_excel(results, disclaimers, flags, month, discrepancies=None):
 
             vals = [
                 r['tl'], o['outlet'], brand,
-                o.get('curr_sale'), o.get('prev_ns'),   # net sale, prev sale
-                o['fc_pct'], o['cmp_pct'],
+                o.get('curr_sale'), o.get('prev_ns'),
+                o['fc_pct'], o['cmp_pct'], o.get('cmp_count'),
                 o['kpt_avg'], o['rat_avg'], o['avail_pct'],
                 o['hyg_score'], o['notes'],
             ]
-            bgs = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
-            aligns = ["left","left","center","center","center","center","center","center","center","center","center","left"]
-            fmts   = [None,None,None,'#,##0','#,##0','0.00','0.00','0.0','0.00','0.0',None,None]
+            bgs    = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
+            aligns = ["left","left","center","center","center","center","center","center","center","center","center","center","left"]
+            fmts   = [None,None,None,'#,##0','#,##0','0.00','0.00','#,##0','0.0','0.00','0.0',None,None]
             for ci,(v,b,al,fm) in enumerate(zip(vals,bgs,aligns,fmts),1):
                 dc(ws2, row_num, ci, v, bg=b, align=al, fmt=fm, bold=(ci==1))
             ws2.row_dimensions[row_num].height = 16
