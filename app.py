@@ -51,9 +51,16 @@ def safe_f(v, d=0.0):
 def parse_pct(v):
     if v is None: return None
     try:
-        s = str(v).replace('%','').strip()
-        f = float(s)
-        return f if f > 1 else f * 100
+        s = str(v).strip()
+        has_pct = s.endswith('%')
+        f = float(s.replace('%', '').strip())
+        # If the raw value had a % sign, it is already a percentage (e.g. "0.54%" = 0.54%)
+        # If no % sign and value is a decimal < 1, it's a proportion — multiply by 100
+        # If no % sign and value >= 1, it's already a percentage number (e.g. 96.5)
+        if has_pct:
+            return f           # "0.54%" → 0.54,  "96.5%" → 96.5
+        else:
+            return f if f > 1 else f * 100  # 0.965 → 96.5,  96.5 → 96.5
     except:
         return None
 
@@ -79,11 +86,9 @@ def score_fc(pct):
     return 1 if pct < 40 else 0
 
 def score_kpt(avg_min):
-    """floor(avg) <= 12 = 1pt | floor(avg) > 12 = 0pt
-    Confirmed: manual applies floor() then <= 12 threshold"""
+    """<= 12 min = 1pt | > 12 min = 0pt  (strict — confirmed Apr 2026)"""
     if avg_min is None: return 0
-    import math
-    return 1 if math.floor(avg_min) <= 12 else 0
+    return 1 if avg_min <= 12 else 0
 
 def score_rating(avg):
     """>= 4.0 = 1pt | < 4.0 = 0pt"""
@@ -224,7 +229,8 @@ DEFAULT_MAPPING = {
     {"outlet":"Taranagar Hyderabad", "pos":141099, "zmt_rk":20855101,"zmt_rf":21080636,"swg_rk":766665, "swg_rf":844889},
     {"outlet":"RK Puram Hyderabad",  "pos":44718,  "zmt_rk":19714313,"zmt_rf":None,    "swg_rk":375980, "swg_rf":None},    # RK only
     {"outlet":"Lulu Mall Hyderabad", "pos":141214, "zmt_rk":21154081,"zmt_rf":None,    "swg_rk":866698, "swg_rf":None},    # RK only
-    {"outlet":"Miyapur",             "pos":24489,  "zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
+    # Miyapur — PERMANENTLY CLOSED (confirmed Apr 2026 by Sujeet)
+    # {"outlet":"Miyapur","pos":24489,"zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
     {"outlet":"Goa Anjuna",          "pos":339817, "zmt_rk":21365117,"zmt_rf":22213849,"swg_rk":946493, "swg_rf":1203077},
   ],
   "Milan": [
@@ -575,10 +581,8 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 disclaimers.append(f"{tl} | {outlet}: KPT missing — scored 0")
 
             tl_kpt += kpt_pts
-            if avg_kpt is not None and avg_kpt > 0:
-                import math
-                if math.floor(avg_kpt) > 12:
-                    flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", "floor>12", kpt_pts))
+            if avg_kpt is not None and avg_kpt > 12:
+                flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.2f} min", ">12 min", kpt_pts))
 
             # ── RATING ───────────────────────────────────────────────────────
             # Formula: Avg of Average rating [Zomato] for all available IDs
@@ -603,13 +607,17 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
             # ── AVAILABILITY ─────────────────────────────────────────────────
             # Formula: Avg of Online % [Zomato] + Online Availability % [Swiggy]
             # for all available IDs (RK + RF where available)
+            # Skip 0% values — 0% with 0 orders means outlet was offline/inactive
+            # that month, not genuinely 0% available. Treat as missing data.
             avail_vals = []
             for r in zids:
-                if r in zmt and zmt[r].get('online_pct') is not None:
-                    avail_vals.append(zmt[r]['online_pct'])
+                v = zmt[r].get('online_pct') if r in zmt else None
+                if v is not None and v > 0:
+                    avail_vals.append(v)
             for s in sids:
-                if s in swg and swg[s].get('avail') is not None:
-                    avail_vals.append(swg[s]['avail'])
+                v = swg[s].get('avail') if s in swg else None
+                if v is not None and v > 0:
+                    avail_vals.append(v)
 
             if avail_vals:
                 avg_avail = round(sum(avail_vals) / len(avail_vals), 2)
@@ -825,7 +833,7 @@ def build_excel(results, disclaimers, flags, month, discrepancies=None):
         ("Sale",         "1pt per outlet that beat prev month Net Sale — summed per TL",    "PetPooja food cost sheet"),
         ("Food Cost",    "< 40% = 1pt | >= 40% = 0pt",                                      "Food cost sheet (calculated)"),
         ("Complaints",   "0-<1% = 4pts | 1-<2% = 3pts | 2-<3% = 1pt | >=3% = 0pt",        "Zomato + Swiggy blended"),
-        ("KPT",          "floor(avg) <= 12min = 1pt | >12min = 0pt",                        "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"),
+        ("KPT",          "<= 12min = 1pt | > 12min = 0pt",                              "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"),
         ("Rating",       ">= 4.0 = 1pt | < 4.0 = 0pt",                                     "Zomato Average Rating (all available IDs)"),
         ("Hygiene",      "Sum of outlet hygiene scores (manually added to food cost sheet)", "Hygiene Score column in food cost file"),
         ("Availability", ">= 98% = 1pt | < 98% = 0pt",                                     "Avg of Zomato Online% + Swiggy Online Availability%"),
@@ -877,7 +885,7 @@ def build_excel(results, disclaimers, flags, month, discrepancies=None):
             brand = "RK" if o['rk_only'] else "RK + RF"
             fc_bg  = RD if (o['fc_pct'] and o['fc_pct'] >= 40) else (GN if o['fc_pct'] else bg)
             cmp_bg = RD if (o['cmp_pct'] and o['cmp_pct'] >= 3) else (YW if (o['cmp_pct'] and o['cmp_pct'] >= 2) else (GN if o['cmp_pct'] is not None else bg))
-            kpt_bg = RD if (o['kpt_avg'] and int(o['kpt_avg']) > 12) else (GN if o['kpt_avg'] else bg)
+            kpt_bg = RD if (o['kpt_avg'] and o['kpt_avg'] > 12) else (GN if o['kpt_avg'] else bg)
             rat_bg = RD if (o['rat_avg'] and o['rat_avg'] < 4.0) else (GN if o['rat_avg'] else bg)
             av_bg  = RD if (o['avail_pct'] and o['avail_pct'] < 98) else (GN if o['avail_pct'] else bg)
 
