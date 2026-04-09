@@ -68,6 +68,7 @@ def parse_min(v):
 def score_complaints(pct):
     """0-1% = 4pts | 1-2% = 3pts | 2-3% = 1pt | >=3% = 0pt"""
     if pct is None: return 0
+    pct = max(pct, 0)   # guard: negative % (data anomaly) treated as 0
     if pct < 1:     return 4
     if pct < 2:     return 3
     if pct < 3:     return 1
@@ -462,18 +463,20 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                     s_has_cmp = True
 
             total_orders = z_orders + s_orders
-            total_comps  = z_comps + s_comps
+            total_comps  = int(z_comps + s_comps)   # raw count, stored for Excel output
 
             if total_orders > 0:
                 cmp_pct  = round(total_comps / total_orders * 100, 2)
+                cmp_pct  = max(cmp_pct, 0)           # safety: clamp negative to 0
                 cmp_pts  = score_complaints(cmp_pct)
                 cmp_src  = "RK only" if rk_only else "Swiggy+Zomato"
                 if not s_has_cmp and z_orders > 0:
                     cmp_src = "Zomato only (Swiggy missing)"
             else:
-                cmp_pct  = None
-                cmp_pts  = 0
-                cmp_src  = "No data"
+                cmp_pct   = None
+                cmp_pts   = 0
+                cmp_src   = "No data"
+                total_comps = 0
                 notes.append("No complaint data")
                 disclaimers.append(f"{tl} | {outlet}: complaint data missing — scored 0")
 
@@ -595,6 +598,7 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 'outlet':     outlet,
                 'pos':        pos,
                 'rk_only':    rk_only,
+                'cmp_count':  total_comps,
                 'cmp_pct':    cmp_pct,   'cmp_pts':   cmp_pts,  'cmp_src':  cmp_src,
                 'kpt_avg':    avg_kpt,   'kpt_pts':   kpt_pts,  'kpt_src':  kpt_src,
                 'rat_avg':    avg_rat,   'rat_pts':   rat_pts,  'rat_src':  rat_src,
@@ -790,7 +794,7 @@ def build_excel(results, disclaimers, flags, month):
     od_hdrs = [
         ("Team Leader",20), ("Outlet",24), ("Brands",10),
         ("Net Sale (₹)",14), ("Prev Sale (₹)",14),
-        ("Food Cost %",11), ("Complaint %",11),
+        ("Food Cost %",11), ("Complaints",11), ("Complaint %",11),
         ("KPT (min)",10), ("Rating",9), ("Availability %",13),
         ("Hygiene",9), ("Notes",28),
     ]
@@ -813,13 +817,13 @@ def build_excel(results, disclaimers, flags, month):
             vals = [
                 r['tl'], o['outlet'], brand,
                 o.get('curr_sale'), o.get('prev_ns'),   # net sale, prev sale
-                o['fc_pct'], o['cmp_pct'],
+                o['fc_pct'], o.get('cmp_count'), o['cmp_pct'],
                 o['kpt_avg'], o['rat_avg'], o['avail_pct'],
                 o['hyg_score'], o['notes'],
             ]
-            bgs = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
-            aligns = ["left","left","center","center","center","center","center","center","center","center","center","left"]
-            fmts   = [None,None,None,'#,##0','#,##0','0.00','0.00','0.0','0.00','0.0',None,None]
+            bgs    = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
+            aligns = ["left","left","center","center","center","center","center","center","center","center","center","center","left"]
+            fmts   = [None,None,None,'#,##0','#,##0','0.00','0','0.00','0.0','0.00','0.0',None,None]
             for ci,(v,b,al,fm) in enumerate(zip(vals,bgs,aligns,fmts),1):
                 dc(ws2, row_num, ci, v, bg=b, align=al, fmt=fm, bold=(ci==1))
             ws2.row_dimensions[row_num].height = 16
