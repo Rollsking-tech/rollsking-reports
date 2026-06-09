@@ -148,6 +148,8 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector 125 Noida",    "pos":373602, "zmt_rk":21824279,"zmt_rf":21819721,"swg_rk":1069514,"swg_rf":1069500},
     {"outlet":"Sector-73 Noida",     "pos":97074,  "zmt_rk":20508934,"zmt_rf":20511693,"swg_rk":635149, "swg_rf":641252},
     {"outlet":"Sector-44 Noida",     "pos":39966,  "zmt_rk":18575970,"zmt_rf":21570341,"swg_rk":42813,  "swg_rf":1035832},
+    {"outlet":"EXPO Mart G.Noida (RF)","pos":424639,"zmt_rk":None,    "zmt_rf":22507940,"swg_rk":None,   "swg_rf":1326563},  # New - RF only, RK IDs not received
+    {"outlet":"Sec-93 Noida",        "pos":441137, "zmt_rk":None,    "zmt_rf":22761225,"swg_rk":1379342,"swg_rf":1379341},  # New - RK Zomato ID not received
   ],
   "Ajay Halder": [
     {"outlet":"Sector 4 Noida",      "pos":21787,  "zmt_rk":19364731,"zmt_rf":20884617,"swg_rk":54622,  "swg_rf":784582},
@@ -156,6 +158,9 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector-18",           "pos":26952,  "zmt_rk":304612,  "zmt_rf":22333370,"swg_rk":42807,  "swg_rf":1238358},  # RF verified
     {"outlet":"Gaur City GNoida",    "pos":112772, "zmt_rk":20589872,"zmt_rf":21087471,"swg_rk":879431, "swg_rf":940381},
     {"outlet":"Eco Loft",            "pos":74178,  "zmt_rk":20264919,"zmt_rf":22245955,"swg_rk":531120, "swg_rf":1227942},
+    {"outlet":"Sec-63 Noida",        "pos":436768, "zmt_rk":22692840,"zmt_rf":22692844,"swg_rk":1364168,"swg_rf":1364167},  # New
+    {"outlet":"Mayur Vihar Phase-3", "pos":104888, "zmt_rk":20538416,"zmt_rf":22691860,"swg_rk":663278, "swg_rf":1344903},  # New
+    {"outlet":"Sec-122 Noida",       "pos":443413, "zmt_rk":19200571,"zmt_rf":None,    "swg_rk":233835, "swg_rf":1382942},  # New - RF Zomato ID not received
   ],
   "Sunil Sharma": [
     {"outlet":"RDC Raj Nagar Gzb",   "pos":363143, "zmt_rk":18962941,"zmt_rf":21184529,"swg_rk":879460, "swg_rf":883371},
@@ -209,11 +214,14 @@ DEFAULT_MAPPING = {
     {"outlet":"Bel Road Bangalore",  "pos":75897,  "zmt_rk":20263151,"zmt_rf":21037571,"swg_rk":536015, "swg_rf":728281},
     {"outlet":"Habble Bangalore",    "pos":95682,  "zmt_rk":20471662,"zmt_rf":None,    "swg_rk":625912, "swg_rf":None},    # RK only
     {"outlet":"Indira Nagar Bangalore","pos":403199,"zmt_rk":22179137,"zmt_rf":22179218,"swg_rk":1203098,"swg_rf":1203101},
+    {"outlet":"HSR Layout Bangalore", "pos":437090, "zmt_rk":22691724,"zmt_rf":22691793,"swg_rk":1364163,"swg_rf":1364162},  # New
+    {"outlet":"Marathahalli Bangalore","pos":438962,"zmt_rk":22691479,"zmt_rf":22691689,"swg_rk":1369113,"swg_rf":1373601},  # New
   ],
   "Virendra Pratap": [
     {"outlet":"Mohanram Nagar",      "pos":84743,  "zmt_rk":20410863,"zmt_rf":20994725,"swg_rk":588878, "swg_rf":808838},
     {"outlet":"Madipakkam",          "pos":84742,  "zmt_rk":20410826,"zmt_rf":21627457,"swg_rk":588790, "swg_rf":1021132},
     {"outlet":"Parengudi Chennai",   "pos":97078,  "zmt_rk":20486896,"zmt_rf":21087508,"swg_rk":631195, "swg_rf":848486},
+    {"outlet":"DLF Chennai",         "pos":415396, "zmt_rk":20938029,"zmt_rf":None,    "swg_rk":794778, "swg_rf":848491},  # New - RF Zomato ID not received
   ],
   "Atul Kumar": [
     {"outlet":"Apple Ghar Pune",     "pos":129883, "zmt_rk":20748035,"zmt_rf":21044940,"swg_rk":733937, "swg_rf":741458},
@@ -242,6 +250,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Mumbai Dahisar",      "pos":399741, "zmt_rk":22170342,"zmt_rf":None,   "swg_rk":1220916,"swg_rf":1276496},  # New Feb 2026
     {"outlet":"Mumbai Marol",        "pos":404829, "zmt_rk":22274879,"zmt_rf":None,   "swg_rk":1238360,"swg_rf":1276481},  # New Feb 2026
     {"outlet":"Mira Road Mumbai",    "pos":386734, "zmt_rk":22044961,"zmt_rf":22150856,"swg_rk":1142360,"swg_rf":1179699},
+    {"outlet":"Koparkhairne Mumbai", "pos":442404, "zmt_rk":None,    "zmt_rf":None,    "swg_rk":1379340,"swg_rf":1379339},  # New - both Zomato IDs not received
   ],
 }
 
@@ -1461,7 +1470,7 @@ with tab_outlets:
                     toggle = st.checkbox(
                         label,
                         value=(not is_off),
-                        key=f"status_{pos}"
+                        key=f"status_{tl}_{pos}_{i}"
                     )
                     if not toggle and pos not in inactive:
                         st.session_state.inactive_pos.add(pos)
