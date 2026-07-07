@@ -51,15 +51,9 @@ def safe_f(v, d=0.0):
 def parse_pct(v):
     if v is None: return None
     try:
-        s = str(v).strip()
-        has_pct = s.endswith('%')
-        f = float(s.replace('%', '').strip())
-        # String with % sign is already a percentage (e.g. "0.54%" = 0.54%)
-        # Decimal without % and < 1 is a proportion — multiply by 100
-        if has_pct:
-            return f
-        else:
-            return f if f > 1 else f * 100
+        s = str(v).replace('%','').strip()
+        f = float(s)
+        return f if f > 1 else f * 100
     except:
         return None
 
@@ -85,9 +79,11 @@ def score_fc(pct):
     return 1 if pct < 40 else 0
 
 def score_kpt(avg_min):
-    """<= 12 min = 1pt | > 12 min = 0pt  (strict — confirmed Apr 2026)"""
+    """floor(avg) <= 12 = 1pt | floor(avg) > 12 = 0pt
+    Confirmed: manual applies floor() then <= 12 threshold"""
     if avg_min is None: return 0
-    return 1 if avg_min <= 12 else 0
+    import math
+    return 1 if math.floor(avg_min) <= 12 else 0
 
 def score_rating(avg):
     """>= 4.0 = 1pt | < 4.0 = 0pt"""
@@ -148,8 +144,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector 125 Noida",    "pos":373602, "zmt_rk":21824279,"zmt_rf":21819721,"swg_rk":1069514,"swg_rf":1069500},
     {"outlet":"Sector-73 Noida",     "pos":97074,  "zmt_rk":20508934,"zmt_rf":20511693,"swg_rk":635149, "swg_rf":641252},
     {"outlet":"Sector-44 Noida",     "pos":39966,  "zmt_rk":18575970,"zmt_rf":21570341,"swg_rk":42813,  "swg_rf":1035832},
-    {"outlet":"EXPO Mart G.Noida (RF)","pos":424639,"zmt_rk":None,    "zmt_rf":22507940,"swg_rk":None,   "swg_rf":1326563},  # New - RF only, RK IDs not received
-    {"outlet":"Sec-93 Noida",        "pos":441137, "zmt_rk":None,    "zmt_rf":22761225,"swg_rk":1379342,"swg_rf":1379341},  # New - RK Zomato ID not received
+    {"outlet":"Sector 93 Noida",     "pos":None,   "zmt_rk":22802211,"zmt_rf":None,   "swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/RF/Swiggy pending
   ],
   "Ajay Halder": [
     {"outlet":"Sector 4 Noida",      "pos":21787,  "zmt_rk":19364731,"zmt_rf":20884617,"swg_rk":54622,  "swg_rf":784582},
@@ -158,9 +153,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector-18",           "pos":26952,  "zmt_rk":304612,  "zmt_rf":22333370,"swg_rk":42807,  "swg_rf":1238358},  # RF verified
     {"outlet":"Gaur City GNoida",    "pos":112772, "zmt_rk":20589872,"zmt_rf":21087471,"swg_rk":879431, "swg_rf":940381},
     {"outlet":"Eco Loft",            "pos":74178,  "zmt_rk":20264919,"zmt_rf":22245955,"swg_rk":531120, "swg_rf":1227942},
-    {"outlet":"Sec-63 Noida",        "pos":436768, "zmt_rk":22692840,"zmt_rf":22692844,"swg_rk":1364168,"swg_rf":1364167},  # New
-    {"outlet":"Mayur Vihar Phase-3", "pos":104888, "zmt_rk":20538416,"zmt_rf":22691860,"swg_rk":663278, "swg_rf":1344903},  # New
-    {"outlet":"Sec-122 Noida",       "pos":443413, "zmt_rk":19200571,"zmt_rf":None,    "swg_rk":233835, "swg_rf":1382942},  # New - RF Zomato ID not received
+    {"outlet":"Sector 122 Noida",    "pos":None,   "zmt_rk":None,   "zmt_rf":22735841,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/RK/Swiggy pending
   ],
   "Sunil Sharma": [
     {"outlet":"RDC Raj Nagar Gzb",   "pos":363143, "zmt_rk":18962941,"zmt_rf":21184529,"swg_rk":879460, "swg_rf":883371},
@@ -173,24 +166,23 @@ DEFAULT_MAPPING = {
     {"outlet":"Vasundhra",           "pos":122466, "zmt_rk":20711593,"zmt_rf":21780276,"swg_rk":731841, "swg_rf":1069774},
   ],
   "Sanjay Morya": [
-    {"outlet":"Nathupur Gurugram",   "pos":108782, "zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475, "swg_rf":783922},
-    {"outlet":"Old DLF Sec-14 Gurgaon","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
-    {"outlet":"Sector-57 Gurugram",  "pos":74068,  "zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165, "swg_rf":803919},
-    {"outlet":"Golf Course Sec-54 Gurugram","pos":108779, "zmt_rk":20582847,"zmt_rf":None,    "swg_rk":668467, "swg_rf":None},    # RK only; formerly Wazirabad
-    {"outlet":"Gurugram Sec-82",     "pos":30407,  "zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106, "swg_rf":850542},
-    {"outlet":"Sector 90 Gurugram",  "pos":380769, "zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
-  ],
-  "Harinder Nagar": [
     {"outlet":"Kalkaji",             "pos":31247,  "zmt_rk":18869459,"zmt_rf":20884610,"swg_rk":90719,  "swg_rf":783920},
     {"outlet":"Tilak Nagar",         "pos":63819,  "zmt_rk":18942689,"zmt_rf":20884619,"swg_rk":123197, "swg_rf":786729},
     {"outlet":"Vasant Kunj",         "pos":25924,  "zmt_rk":19030978,"zmt_rf":21198457,"swg_rk":131217, "swg_rf":883284},
     {"outlet":"Chattarpur",          "pos":26423,  "zmt_rk":19052007,"zmt_rf":21198467,"swg_rk":140433, "swg_rf":883277},
     {"outlet":"Paschim Vihar",       "pos":43412,  "zmt_rk":20256577,"zmt_rf":21751304,"swg_rk":531480, "swg_rf":1065481},
     {"outlet":"Gtb Nagar",           "pos":79050,  "zmt_rk":20323930,"zmt_rf":21929075,"swg_rk":569414, "swg_rf":1101863},
+    {"outlet":"Nathupur Gurugram",   "pos":108782, "zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475, "swg_rf":783922},
+    {"outlet":"Old DLF Sec-14 Gurgaon","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
+    {"outlet":"Sector-57 Gurugram",  "pos":74068,  "zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165, "swg_rf":803919},
+    {"outlet":"Wazirabad Gurugram",  "pos":108779, "zmt_rk":20582847,"zmt_rf":None,    "swg_rk":668467, "swg_rf":None},    # RK only
+    {"outlet":"Gurugram Sec-82",     "pos":30407,  "zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106, "swg_rf":850542},
+    {"outlet":"Sector 90 Gurugram",  "pos":380769, "zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
     {"outlet":"Rohini",              "pos":93493,  "zmt_rk":22100897,"zmt_rf":22101011,"swg_rk":622353, "swg_rf":1167156},
     {"outlet":"Vikashpuri",          "pos":404584, "zmt_rk":22227640,"zmt_rf":22227658,"swg_rk":1224350,"swg_rf":1224348},
-    {"outlet":"Uttam Nagar Dwarka",  "pos":414828, "zmt_rk":None,    "zmt_rf":None,   "swg_rk":1280807,"swg_rf":1280814},
+    {"outlet":"Uttam Nagar Dwarka",  "pos":414828, "zmt_rk":22507885,"zmt_rf":22779634,"swg_rk":1280807,"swg_rf":1280814},
     {"outlet":"Subhash Nagar",       "pos":398993, "zmt_rk":22165860,"zmt_rf":22165921,"swg_rk":1196325,"swg_rf":1196321},
+    {"outlet":"Golf Course Gurugram","pos":None,   "zmt_rk":None,   "zmt_rf":22691632,"swg_rk":None,  "swg_rf":1364164},  # Partial IDs — POS/RK pending
   ],
   "Zeeshan Ali": [
     {"outlet":"Shaheen Bagh",        "pos":118685, "zmt_rk":20666436,"zmt_rf":21190578,"swg_rk":704360, "swg_rf":879433},
@@ -214,14 +206,12 @@ DEFAULT_MAPPING = {
     {"outlet":"Bel Road Bangalore",  "pos":75897,  "zmt_rk":20263151,"zmt_rf":21037571,"swg_rk":536015, "swg_rf":728281},
     {"outlet":"Habble Bangalore",    "pos":95682,  "zmt_rk":20471662,"zmt_rf":None,    "swg_rk":625912, "swg_rf":None},    # RK only
     {"outlet":"Indira Nagar Bangalore","pos":403199,"zmt_rk":22179137,"zmt_rf":22179218,"swg_rk":1203098,"swg_rf":1203101},
-    {"outlet":"HSR Layout Bangalore", "pos":437090, "zmt_rk":22691724,"zmt_rf":22691793,"swg_rk":1364163,"swg_rf":1364162},  # New
-    {"outlet":"Marathahalli Bangalore","pos":438962,"zmt_rk":22691479,"zmt_rf":22691689,"swg_rk":1369113,"swg_rf":1373601},  # New
   ],
   "Virendra Pratap": [
     {"outlet":"Mohanram Nagar",      "pos":84743,  "zmt_rk":20410863,"zmt_rf":20994725,"swg_rk":588878, "swg_rf":808838},
     {"outlet":"Madipakkam",          "pos":84742,  "zmt_rk":20410826,"zmt_rf":21627457,"swg_rk":588790, "swg_rf":1021132},
     {"outlet":"Parengudi Chennai",   "pos":97078,  "zmt_rk":20486896,"zmt_rf":21087508,"swg_rk":631195, "swg_rf":848486},
-    {"outlet":"DLF Chennai",         "pos":415396, "zmt_rk":20938029,"zmt_rf":None,    "swg_rk":794778, "swg_rf":848491},  # New - RF Zomato ID not received
+    {"outlet":"DLF Chennai",         "pos":None,   "zmt_rk":22802209,"zmt_rf":22779533,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/Swiggy pending
   ],
   "Atul Kumar": [
     {"outlet":"Apple Ghar Pune",     "pos":129883, "zmt_rk":20748035,"zmt_rf":21044940,"swg_rk":733937, "swg_rf":741458},
@@ -236,8 +226,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Taranagar Hyderabad", "pos":141099, "zmt_rk":20855101,"zmt_rf":21080636,"swg_rk":766665, "swg_rf":844889},
     {"outlet":"RK Puram Hyderabad",  "pos":44718,  "zmt_rk":19714313,"zmt_rf":None,    "swg_rk":375980, "swg_rf":None},    # RK only
     {"outlet":"Lulu Mall Hyderabad", "pos":141214, "zmt_rk":21154081,"zmt_rf":None,    "swg_rk":866698, "swg_rf":None},    # RK only
-    # Miyapur — PERMANENTLY CLOSED (confirmed Apr 2026 by Sujeet)
-    # {"outlet":"Miyapur","pos":24489,"zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
+    {"outlet":"Miyapur",             "pos":24489,  "zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
     {"outlet":"Goa Anjuna",          "pos":339817, "zmt_rk":21365117,"zmt_rf":22213849,"swg_rk":946493, "swg_rf":1203077},
   ],
   "Milan": [
@@ -248,9 +237,9 @@ DEFAULT_MAPPING = {
     {"outlet":"Mumbai Chembur",      "pos":383109, "zmt_rk":21966993,"zmt_rf":22030585,"swg_rk":1104174,"swg_rf":1140316},
     {"outlet":"Airoli Navi Mumbai",  "pos":386396, "zmt_rk":21982077,"zmt_rf":22030515,"swg_rk":1123441,"swg_rf":1140313},
     {"outlet":"Mumbai Dahisar",      "pos":399741, "zmt_rk":22170342,"zmt_rf":None,   "swg_rk":1220916,"swg_rf":1276496},  # New Feb 2026
-    {"outlet":"Mumbai Marol",        "pos":404829, "zmt_rk":22274879,"zmt_rf":None,   "swg_rk":1238360,"swg_rf":1276481},  # New Feb 2026
+    {"outlet":"Mumbai Marol",        "pos":404829, "zmt_rk":22274879,"zmt_rf":22711087,"swg_rk":1238360,"swg_rf":1276481},
     {"outlet":"Mira Road Mumbai",    "pos":386734, "zmt_rk":22044961,"zmt_rf":22150856,"swg_rk":1142360,"swg_rf":1179699},
-    {"outlet":"Koparkhairne Mumbai", "pos":442404, "zmt_rk":None,    "zmt_rf":None,    "swg_rk":1379340,"swg_rf":1379339},  # New - both Zomato IDs not received
+    {"outlet":"Koparkhairne",        "pos":None,   "zmt_rk":22802214,"zmt_rf":22770699,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/Swiggy pending
   ],
 }
 
@@ -433,77 +422,6 @@ def load_petpooja_sales(wb):
 # ══════════════════════════════════════════════════════════════════════════════
 # MAIN CALCULATOR
 # ══════════════════════════════════════════════════════════════════════════════
-def audit_mapping(mapping, zmt, swg, fc, inactive_pos=None):
-    """
-    Checks every outlet's IDs against what actually exists in the uploaded files.
-    Returns a list of discrepancy dicts — one row per missing/mismatched ID.
-    """
-    inactive_pos = inactive_pos or set()
-    issues = []
-
-    zmt_ids = set(zmt.keys())
-    swg_ids = set(swg.keys())
-    fc_pos  = set(fc.keys())
-
-    for tl, outlets in mapping.items():
-        for o in outlets:
-            outlet = o['outlet']
-            pos    = o['pos']
-            if pos in inactive_pos:
-                continue
-
-            # ── Zomato RK ─────────────────────────────────────────────────────
-            zmt_rk = o.get('zmt_rk')
-            if zmt_rk is None:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
-                                'brand': 'RK', 'id': '—',
-                                'issue': 'ID not configured in mapping',
-                                'impact': 'Complaints / KPT / Rating / Availability scored 0'})
-            elif zmt_rk not in zmt_ids:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
-                                'brand': 'RK', 'id': str(zmt_rk),
-                                'issue': 'ID not found in uploaded Zomato file',
-                                'impact': 'Complaints / KPT / Rating / Availability scored 0'})
-
-            # ── Zomato RF (only if RF expected) ───────────────────────────────
-            zmt_rf = o.get('zmt_rf')
-            if zmt_rf and zmt_rf not in zmt_ids:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Zomato',
-                                'brand': 'RF', 'id': str(zmt_rf),
-                                'issue': 'ID not found in uploaded Zomato file',
-                                'impact': 'RF data excluded from Complaints / Rating / Availability'})
-
-            # ── Swiggy RK ─────────────────────────────────────────────────────
-            swg_rk = o.get('swg_rk')
-            if swg_rk is None:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
-                                'brand': 'RK', 'id': '—',
-                                'issue': 'ID not configured in mapping',
-                                'impact': 'Complaints / KPT / Availability scored 0 (Swiggy side)'})
-            elif swg_rk not in swg_ids:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
-                                'brand': 'RK', 'id': str(swg_rk),
-                                'issue': 'ID not found in uploaded Swiggy file',
-                                'impact': 'Complaints / KPT / Availability scored 0 (Swiggy side)'})
-
-            # ── Swiggy RF (only if RF expected) ───────────────────────────────
-            swg_rf = o.get('swg_rf')
-            if swg_rf and swg_rf not in swg_ids:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Swiggy',
-                                'brand': 'RF', 'id': str(swg_rf),
-                                'issue': 'ID not found in uploaded Swiggy file',
-                                'impact': 'RF data excluded from Complaints / Availability (Swiggy)'})
-
-            # ── Food Cost / POS ───────────────────────────────────────────────
-            if pos and pos not in fc_pos:
-                issues.append({'tl': tl, 'outlet': outlet, 'platform': 'Food Cost Sheet',
-                                'brand': '—', 'id': str(pos),
-                                'issue': 'POS ID not found in uploaded food cost file',
-                                'impact': 'Food Cost scored 0 / Hygiene scored 0 / Sale scored 0'})
-
-    return issues
-
-
 def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
     results     = []
     disclaimers = []
@@ -589,8 +507,10 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 disclaimers.append(f"{tl} | {outlet}: KPT missing — scored 0")
 
             tl_kpt += kpt_pts
-            if avg_kpt is not None and avg_kpt > 12:
-                flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.2f} min", ">12 min", kpt_pts))
+            if avg_kpt is not None and avg_kpt > 0:
+                import math
+                if math.floor(avg_kpt) > 12:
+                    flags.append((tl, outlet, "KPT Exceeded", f"{avg_kpt:.1f} min", "floor>12", kpt_pts))
 
             # ── RATING ───────────────────────────────────────────────────────
             # Formula: Avg of Average rating [Zomato] for all available IDs
@@ -615,16 +535,13 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
             # ── AVAILABILITY ─────────────────────────────────────────────────
             # Formula: Avg of Online % [Zomato] + Online Availability % [Swiggy]
             # for all available IDs (RK + RF where available)
-            # Skip 0% — means outlet was offline/inactive that month, not genuinely 0%
             avail_vals = []
             for r in zids:
-                v = zmt[r].get('online_pct') if r in zmt else None
-                if v is not None and v > 0:
-                    avail_vals.append(v)
+                if r in zmt and zmt[r].get('online_pct') is not None:
+                    avail_vals.append(zmt[r]['online_pct'])
             for s in sids:
-                v = swg[s].get('avail') if s in swg else None
-                if v is not None and v > 0:
-                    avail_vals.append(v)
+                if s in swg and swg[s].get('avail') is not None:
+                    avail_vals.append(swg[s]['avail'])
 
             if avail_vals:
                 avg_avail = round(sum(avail_vals) / len(avail_vals), 2)
@@ -682,15 +599,12 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
                 'pos':        pos,
                 'rk_only':    rk_only,
                 'cmp_pct':    cmp_pct,   'cmp_pts':   cmp_pts,  'cmp_src':  cmp_src,
-                'cmp_count':  int(total_comps) if total_orders > 0 else None,
-                'cmp_orders': int(total_orders) if total_orders > 0 else None,
                 'kpt_avg':    avg_kpt,   'kpt_pts':   kpt_pts,  'kpt_src':  kpt_src,
                 'rat_avg':    avg_rat,   'rat_pts':   rat_pts,  'rat_src':  rat_src,
                 'avail_pct':  avg_avail, 'avail_pts': avail_pts,'avail_src':avail_src,
                 'fc_pct':     fc_pct,    'fc_pts':    fc_pts,
                 'hyg_score':  fc_data.get('hygiene_score', 0) if fc_data else 0,
                 'curr_sale':  curr_ns,
-                'prev_ns':    prev_ns,
                 'sale_pts':   outlet_sale_pt,
                 'sale_src':   sale_src,
                 'notes':      "; ".join(notes) if notes else "OK",
@@ -742,442 +656,488 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
 # ══════════════════════════════════════════════════════════════════════════════
 # EXCEL REPORT BUILDER
 # ══════════════════════════════════════════════════════════════════════════════
-
-def build_excel(results, disclaimers, flags, month, discrepancies=None):
+def build_excel(results, disclaimers, flags, month):
     wb = openpyxl.Workbook()
 
-    # ── Light colour palette ──────────────────────────────────────────────────
-    HDR   = "2C3E50"
-    SUB   = "4A6274"
-    WH    = "FFFFFF"
-    ALT   = "F5F7FA"
-    GN    = "D4EDDA"
-    RD    = "FCDEDE"
-    YW    = "FFF3CD"
-    MG    = "DEE2E6"
-    TIER_BG  = {"Platinum":"D4EDDA","Gold":"FFF3CD","Silver":"F0F0F0","Bronze":"FFE8D0"}
-    TIER_FG  = {"Platinum":"155724","Gold":"856404","Silver":"495057","Bronze":"6D4C41"}
-
-    def hc(ws, row, col, val, bg=HDR, fg="FFFFFF", bold=True, sz=9, align="center", wrap=False):
-        c = ws.cell(row=row, column=col, value=val)
-        c.font      = Font(bold=bold, color=fg, size=sz, name="Arial")
-        c.fill      = PatternFill("solid", start_color=bg)
-        c.alignment = Alignment(horizontal=align, vertical="center", wrap_text=wrap)
-        c.border    = thin_border()
-        return c
-
-    def dc(ws, row, col, val, bg=WH, fg="222222", bold=False, align="center", fmt=None):
-        c = ws.cell(row=row, column=col, value=val)
-        c.font      = Font(bold=bold, color=fg, size=9, name="Arial")
-        c.fill      = PatternFill("solid", start_color=bg)
-        c.alignment = Alignment(horizontal=align, vertical="center")
-        if fmt: c.number_format = fmt
-        c.border    = thin_border()
-        return c
-
-    sorted_r = sorted(results, key=lambda x: x['avg_score'], reverse=True)
-
-    # ── SHEET 1: TL Performance Summary ──────────────────────────────────────
+    # ── Sheet 1: TL Summary ───────────────────────────────────────────────────
     ws1 = wb.active
     ws1.title = "TL Performance Summary"
-    ws1.freeze_panes = "A4"
-    ws1.sheet_view.showGridLines = False
-
-    ws1.merge_cells("A1:H1")
+    ws1.merge_cells("A1:L1")
     c = ws1["A1"]
-    c.value = f"RollsKing — Monthly Performance Report | {month}"
-    c.font  = Font(bold=True, size=13, color="FFFFFF", name="Arial")
-    c.fill  = PatternFill("solid", start_color=HDR)
+    c.value     = f"RollsKing — Monthly Performance Report | {month}"
+    c.font      = Font(bold=True, size=14, color="FFFFFF", name="Arial")
+    c.fill      = PatternFill("solid", start_color=CLR["hd"])
     c.alignment = Alignment(horizontal="center", vertical="center")
-    ws1.row_dimensions[1].height = 30
+    ws1.row_dimensions[1].height = 32
 
-    ws1.merge_cells("A2:H2")
+    ws1.merge_cells("A2:L2")
     c = ws1["A2"]
-    c.value = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  {len(results)} Team Leaders  |  {sum(r['outlets'] for r in results)} Outlets"
-    c.font  = Font(size=8, color="AAAAAA", name="Arial")
-    c.fill  = PatternFill("solid", start_color=SUB)
+    c.value     = f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}  |  Scoring: Sale(per outlet) + FC(0-1) + Complaints(0-4) + KPT(0-1) + Rating(0-1) + Avail(0-1) + Hygiene(sum)"
+    c.font      = Font(size=8, color="FFFFFF", italic=True, name="Arial")
+    c.fill      = PatternFill("solid", start_color=CLR["hm"])
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws1.row_dimensions[2].height = 16
 
-    # Headers — Sale Pts + Hygiene Pts only; NO FC/Cmp/KPT/Rating/Avail pts
-    hdrs = [("Team Leader",26),("Outlets",9),("Sale Pts",9),("Hygiene Pts",11),
-            ("Total Pts",10),("Avg Score",10),("Tier",12)]
-    ws1.row_dimensions[3].height = 24
-    for ci,(h,w) in enumerate(hdrs,1):
-        hc(ws1, 3, ci, h)
-        ws1.column_dimensions[get_column_letter(ci)].width = w
+    hdrs = ["Team Leader","Outlets","Sale Pts","FC Pts","Complaint Pts",
+            "KPT Pts","Rating Pts","Hygiene Pts","Avail Pts","Total Pts","Avg Score","Tier"]
+    header_row(ws1, 3, hdrs, CLR["hd"])
+    ws1.row_dimensions[3].height = 28
 
-    for ri, r in enumerate(sorted_r, 4):
-        bg = ALT if ri % 2 == 0 else WH
-        tbg = TIER_BG.get(r['tier'], WH)
-        tfg = TIER_FG.get(r['tier'], "222222")
-        vals = [r['tl'], r['outlets'], r['sales_pts'], r['hyg_pts'],
-                r['total_pts'], r['avg_score'], r['tier']]
-        for ci, v in enumerate(vals, 1):
-            cell_bg = tbg if ci == 7 else (WH if ci == 1 else bg)
-            cell_fg = tfg if ci == 7 else ("222222")
-            dc(ws1, ri, ci, v, bg=cell_bg, fg=cell_fg,
-               bold=(ci in (1,7)), align="left" if ci == 1 else "center")
-        ws1.row_dimensions[ri].height = 18
+    sorted_r = sorted(results, key=lambda x: x['avg_score'], reverse=True)
+    for i, r in enumerate(sorted_r, start=4):
+        row_data = [r['tl'], r['outlets'], r['sales_pts'], r['fc_pts'], r['cmp_pts'],
+                    r['kpt_pts'], r['rat_pts'], r['hyg_pts'], r['avail_pts'],
+                    r['total_pts'], r['avg_score'], r['tier']]
+        bg = CLR["lg"] if i % 2 == 0 else CLR["wh"]
+        for col, val in enumerate(row_data, 1):
+            c = ws1.cell(row=i, column=col, value=val)
+            c.font      = Font(size=9, name="Arial", bold=(col == 1))
+            c.fill      = PatternFill("solid", start_color=bg)
+            c.alignment = Alignment(horizontal="left" if col == 1 else "center", vertical="center")
+            c.border    = thin_border()
+        # Tier colour
+        fg_t, bg_t = TIER_CLR.get(r['tier'], ("000000","FFFFFF"))
+        tc = ws1.cell(row=i, column=12)
+        tc.font  = Font(bold=True, color=fg_t, size=9, name="Arial")
+        tc.fill  = PatternFill("solid", start_color=bg_t)
+        tc.alignment = Alignment(horizontal="center", vertical="center")
+        ws1.row_dimensions[i].height = 18
 
-    # Grand total row
+    # Grand total
     tr = len(sorted_r) + 4
-    for ci in range(1, 8):
-        c = ws1.cell(row=tr, column=ci)
-        c.font  = Font(bold=True, size=9, color="FFFFFF", name="Arial")
-        c.fill  = PatternFill("solid", start_color=HDR)
-        c.border = thin_border()
+    col_keys = {3:'sales_pts',4:'fc_pts',5:'cmp_pts',6:'kpt_pts',
+                7:'rat_pts',8:'hyg_pts',9:'avail_pts',10:'total_pts'}
+    for col in range(1, 13):
+        c = ws1.cell(row=tr, column=col)
+        c.font      = Font(bold=True, size=9, name="Arial")
+        c.fill      = PatternFill("solid", start_color=CLR["mg"])
+        c.border    = thin_border()
         c.alignment = Alignment(horizontal="center", vertical="center")
-    ws1["A"+str(tr)].value = "GRAND TOTAL"
-    ws1["A"+str(tr)].alignment = Alignment(horizontal="left", vertical="center")
-    ws1.cell(row=tr,column=3).value = sum(r['sales_pts'] for r in results)
-    ws1.cell(row=tr,column=4).value = sum(r['hyg_pts']   for r in results)
-    ws1.cell(row=tr,column=5).value = sum(r['total_pts'] for r in results)
+        if   col == 1: c.value = "GRAND TOTAL"
+        elif col in col_keys: c.value = sum(r[col_keys[col]] for r in results)
     ws1.row_dimensions[tr].height = 20
 
-    # Scoring reference
-    sr = tr + 2
-    ws1.cell(row=sr, column=1, value="SCORING REFERENCE").font = Font(bold=True, size=9, color=HDR, name="Arial")
+    # Scoring reference block
+    sc_row = tr + 2
+    ws1.merge_cells(f"A{sc_row}:D{sc_row}")
+    c = ws1[f"A{sc_row}"]
+    c.value = "SCORING REFERENCE"
+    c.font  = Font(bold=True, size=9, color="FFFFFF", name="Arial")
+    c.fill  = PatternFill("solid", start_color=CLR["hd"])
+    c.alignment = Alignment(horizontal="left", vertical="center")
+
     conds = [
-        ("Sale",         "1pt per outlet that beat prev month Net Sale — summed per TL",    "PetPooja food cost sheet"),
-        ("Food Cost",    "< 40% = 1pt | >= 40% = 0pt",                                      "Food cost sheet (calculated)"),
-        ("Complaints",   "0-<1% = 4pts | 1-<2% = 3pts | 2-<3% = 1pt | >=3% = 0pt",        "Zomato + Swiggy blended"),
-        ("KPT",          "<= 12min = 1pt | > 12min = 0pt",                        "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"),
-        ("Rating",       ">= 4.0 = 1pt | < 4.0 = 0pt",                                     "Zomato Average Rating (all available IDs)"),
-        ("Hygiene",      "Sum of outlet hygiene scores (manually added to food cost sheet)", "Hygiene Score column in food cost file"),
-        ("Availability", ">= 98% = 1pt | < 98% = 0pt",                                     "Avg of Zomato Online% + Swiggy Online Availability%"),
-        ("Grade",        "Bronze 0-3 | Silver 3-6 | Gold 6-8 | Platinum 8+",               "Total Pts / No. of outlets"),
+        ["Sale",         "1pt per outlet that beat prev month Net Sale — summed per TL",       "PetPooja food cost sheet"],
+        ["Food Cost",    "< 40% = 1pt | >= 40% = 0pt",                                            "Food cost sheet (calculated)"],
+        ["Complaints",   "0-<1% = 4pts | 1-<2% = 3pts | 2-<3% = 1pt | >=3% = 0pt",              "Zomato + Swiggy blended"],
+        ["KPT",          "< 12 min = 1pt | >= 12 min = 0pt",                                      "Avg of Zomato RK KPT + Swiggy RK Avg Prep Time"],
+        ["Rating",       ">= 4.0 = 1pt | < 4.0 = 0pt",                                           "Zomato Average Rating (all available IDs)"],
+        ["Hygiene",      "Sum of outlet hygiene scores from food cost sheet",                      "Hygiene Score column in food cost file"],
+        ["Availability", ">= 98% = 1pt | < 98% = 0pt",                                           "Avg of Zomato Online% + Swiggy Online Availability%"],
+        ["Grade",        "Bronze 0-3 | Silver 3-6 | Gold 6-8 | Platinum 8+",                     "Total Pts / No. of outlets"],
     ]
-    for j, (k, rule, src) in enumerate(conds, sr+1):
-        bg = ALT if j % 2 == 0 else WH
-        for ci, v in enumerate([k, rule, src], 1):
-            c = ws1.cell(row=j, column=ci, value=v)
-            c.font = Font(size=8, bold=(ci==1), name="Arial", color="222222")
-            c.fill = PatternFill("solid", start_color=bg)
-            c.border = thin_border()
+    for j, row_data in enumerate(conds, sc_row + 1):
+        bg = CLR["lg"] if j % 2 == 0 else CLR["wh"]
+        for col, val in enumerate(row_data, 1):
+            c = ws1.cell(row=j, column=col, value=val)
+            c.font      = Font(size=8, name="Arial")
+            c.fill      = PatternFill("solid", start_color=bg)
+            c.border    = thin_border()
             c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
         ws1.row_dimensions[j].height = 18
-    ws1.merge_cells(f"B{sr+1}:C{sr+1}")
-    for j in range(sr+1, sr+len(conds)+1):
-        ws1.merge_cells(f"B{j}:C{j}")
 
-    # ── SHEET 2: Outlet Detail ────────────────────────────────────────────────
-    # Columns: TL | Outlet | Brands | Net Sale | Prev Sale | FC% | Cmp% | KPT | Rating | Avail% | Hygiene | Notes
+    ws1.column_dimensions["A"].width = 26
+    ws1.column_dimensions["B"].width = 10
+    for col_l in ["C","D","E","F","G","H","I","J","K"]:
+        ws1.column_dimensions[col_l].width = 12
+    ws1.column_dimensions["L"].width = 11
+
+    # ── Sheet 2: Outlet Detail ────────────────────────────────────────────────
     ws2 = wb.create_sheet("Outlet Detail")
-    ws2.freeze_panes = "C3"
-    ws2.sheet_view.showGridLines = False
-
-    ws2.merge_cells("A1:L1")
+    ws2.merge_cells("A1:P1")
     c = ws2["A1"]
-    c.value = f"Outlet Detail — {month}"
-    c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
-    c.fill  = PatternFill("solid", start_color=HDR)
+    c.value     = f"Outlet Detail — {month}"
+    c.font      = Font(bold=True, size=12, color="FFFFFF", name="Arial")
+    c.fill      = PatternFill("solid", start_color=CLR["hd"])
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws2.row_dimensions[1].height = 22
 
-    od_hdrs = [
-        ("Team Leader",20), ("Outlet",24), ("Brands",10),
-        ("Net Sale (₹)",14), ("Prev Sale (₹)",14),
-        ("Food Cost %",11), ("Complaint %",11), ("Total Complaints",16),
-        ("KPT (min)",10), ("Rating",9), ("Availability %",13),
-        ("Hygiene",9), ("Notes",28),
-    ]
-    for ci,(h,w) in enumerate(od_hdrs,1):
-        hc(ws2, 2, ci, h, bg=SUB, wrap=True)
-        ws2.column_dimensions[get_column_letter(ci)].width = w
+    od_hdrs = ["Team Leader","Outlet","POS ID","RK Only",
+               "Sale Pts","Sale Source",
+               "Complaint %","Cmp Pts","Cmp Source",
+               "KPT Avg (min)","KPT Pts",
+               "Rating","Rat Pts",
+               "Avail %","Avail Pts",
+               "FC %","FC Pts",
+               "Hygiene Pts","Notes"]
+    header_row(ws2, 2, od_hdrs, CLR["hm"])
     ws2.row_dimensions[2].height = 28
 
     row_num = 3
     for r in sorted_r:
         for o in r['outlet_detail']:
-            bg = ALT if row_num % 2 == 0 else WH
-            brand = "RK" if o['rk_only'] else "RK + RF"
-            fc_bg  = RD if (o['fc_pct'] and o['fc_pct'] >= 40) else (GN if o['fc_pct'] else bg)
-            cmp_bg = RD if (o['cmp_pct'] and o['cmp_pct'] >= 3) else (YW if (o['cmp_pct'] and o['cmp_pct'] >= 2) else (GN if o['cmp_pct'] is not None else bg))
-            kpt_bg = RD if (o['kpt_avg'] and o['kpt_avg'] > 12) else (GN if o['kpt_avg'] else bg)
-            rat_bg = RD if (o['rat_avg'] and o['rat_avg'] < 4.0) else (GN if o['rat_avg'] else bg)
-            av_bg  = RD if (o['avail_pct'] and o['avail_pct'] < 98) else (GN if o['avail_pct'] else bg)
-
+            bg = CLR["lg"] if row_num % 2 == 0 else CLR["wh"]
             vals = [
-                r['tl'], o['outlet'], brand,
-                o.get('curr_sale'), o.get('prev_ns'),
-                o['fc_pct'], o['cmp_pct'], o.get('cmp_count'),
-                o['kpt_avg'], o['rat_avg'], o['avail_pct'],
+                r['tl'], o['outlet'], o['pos'], "Yes" if o['rk_only'] else "",
+                o.get('sale_pts',0), o.get('sale_src',''),
+                o['cmp_pct'], o['cmp_pts'], o['cmp_src'],
+                o['kpt_avg'], o['kpt_pts'],
+                o['rat_avg'], o['rat_pts'],
+                o['avail_pct'], o['avail_pts'],
+                o['fc_pct'], o['fc_pts'],
                 o['hyg_score'], o['notes'],
             ]
-            bgs    = [WH, bg, bg, bg, bg, fc_bg, cmp_bg, cmp_bg, kpt_bg, rat_bg, av_bg, bg, bg]
-            aligns = ["left","left","center","center","center","center","center","center","center","center","center","center","left"]
-            fmts   = [None,None,None,'#,##0','#,##0','0.00','0.00','#,##0','0.0','0.00','0.0',None,None]
-            for ci,(v,b,al,fm) in enumerate(zip(vals,bgs,aligns,fmts),1):
-                dc(ws2, row_num, ci, v, bg=b, align=al, fmt=fm, bold=(ci==1))
+            for col, val in enumerate(vals, 1):
+                c = ws2.cell(row=row_num, column=col, value=val)
+                c.font      = Font(size=8, name="Arial")
+                c.fill      = PatternFill("solid", start_color=bg)
+                c.border    = thin_border()
+                c.alignment = Alignment(
+                    horizontal="left" if col in (1,2,6,9,19) else "center",
+                    vertical="center")
             ws2.row_dimensions[row_num].height = 16
             row_num += 1
 
-    # ── SHEET 3: Flagged Outlets ──────────────────────────────────────────────
+    ws2.column_dimensions["A"].width = 20
+    ws2.column_dimensions["B"].width = 24
+    ws2.column_dimensions["F"].width = 22
+    ws2.column_dimensions["S"].width = 30
+    for col_l in [get_column_letter(i) for i in range(3, 19) if i not in (2,6,19)]:
+        ws2.column_dimensions[col_l].width = 11
+
+    # ── Sheet 3: Flagged Outlets ──────────────────────────────────────────────
     ws3 = wb.create_sheet("Flagged Outlets")
-    ws3.sheet_view.showGridLines = False
-    ws3.merge_cells("A1:E1")
+    ws3.merge_cells("A1:F1")
     c = ws3["A1"]
-    c.value = f"Flagged Outlets — {month}  ({len(flags)} issues)"
-    c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
-    c.fill  = PatternFill("solid", start_color="8B0000")
+    c.value     = f"Flagged Outlets — {month}  ({len(flags)} issues)"
+    c.font      = Font(bold=True, size=12, color="FFFFFF", name="Arial")
+    c.fill      = PatternFill("solid", start_color="8B0000")
     c.alignment = Alignment(horizontal="center", vertical="center")
     ws3.row_dimensions[1].height = 22
-    for ci,(h,w) in enumerate([("Team Leader",20),("Outlet",24),("Issue",22),("Value",14),("Threshold",14)],1):
-        hc(ws3, 2, ci, h, bg="8B0000")
-        ws3.column_dimensions[get_column_letter(ci)].width = w
-    flag_bg = {"High Complaints":RD,"KPT Exceeded":YW,"Low Rating":YW,
-               "High Food Cost":RD,"Low Availability":YW,"Sales Decline":RD}
-    for i,(tl,outlet,issue,val,thresh,pts) in enumerate(flags,3):
-        bg = flag_bg.get(issue, WH)
-        for ci,v in enumerate([tl,outlet,issue,val,thresh],1):
-            dc(ws3, i, ci, v, bg=bg, align="left" if ci<=2 else "center")
+
+    header_row(ws3, 2, ["Team Leader","Outlet","Issue","Value","Threshold","Score"], "8B0000")
+    flag_clr = {"High Complaints":CLR["rd"],"KPT Exceeded":CLR["yw"],
+                "Low Rating":CLR["yw"],"High Food Cost":CLR["rd"],
+                "Low Availability":CLR["yw"],"Sales Decline":CLR["rd"]}
+    for i, (tl, outlet, issue, val, thresh, pts) in enumerate(flags, 3):
+        bg = flag_clr.get(issue, CLR["wh"])
+        for col, v in enumerate([tl, outlet, issue, val, thresh, pts], 1):
+            c = ws3.cell(row=i, column=col, value=v)
+            c.font      = Font(size=8, name="Arial")
+            c.fill      = PatternFill("solid", start_color=bg)
+            c.border    = thin_border()
+            c.alignment = Alignment(horizontal="left" if col < 3 else "center", vertical="center")
         ws3.row_dimensions[i].height = 15
+    for col_l, w in zip(["A","B","C","D","E","F"],[20,24,18,14,16,8]):
+        ws3.column_dimensions[col_l].width = w
 
-    # ── SHEET 4: Data Discrepancy ─────────────────────────────────────────────
-    discrepancies = discrepancies or []
-    ws4 = wb.create_sheet("Data Discrepancy")
-    ws4.sheet_view.showGridLines = False
-
-    DISC_HDR = "7B2D00"  # dark orange — distinct from flags red
-    disc_cols = [
-        ("Team Leader", 20), ("Outlet", 24), ("Platform", 16),
-        ("Brand", 8), ("ID in Mapping", 16),
-        ("Issue", 42), ("Impact on Score", 48),
-    ]
-
-    ws4.merge_cells(f"A1:{get_column_letter(len(disc_cols))}1")
+    # ── Sheet 4: Data Notes ───────────────────────────────────────────────────
+    ws4 = wb.create_sheet("Data Notes")
+    ws4.merge_cells("A1:B1")
     c = ws4["A1"]
-    disc_count = len(discrepancies)
-    c.value = (
-        f"Data Discrepancy Report — {month}  |  "
-        f"{disc_count} ID issue{'s' if disc_count != 1 else ''} detected"
-        if disc_count > 0
-        else f"Data Discrepancy Report — {month}  |  ✅ All IDs matched — no issues found"
-    )
-    c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
-    c.fill  = PatternFill("solid", start_color=DISC_HDR if disc_count > 0 else "1A5C2A")
+    c.value     = f"Data Notes — {month}"
+    c.font      = Font(bold=True, size=12, color="FFFFFF", name="Arial")
+    c.fill      = PatternFill("solid", start_color=CLR["hd"])
     c.alignment = Alignment(horizontal="center", vertical="center")
-    ws4.row_dimensions[1].height = 26
-
-    # Sub-header explaining the sheet
-    ws4.merge_cells(f"A2:{get_column_letter(len(disc_cols))}2")
-    c = ws4["A2"]
-    c.value = (
-        "These IDs are in the app mapping but were NOT found in the uploaded files. "
-        "The report still runs — affected metrics are scored 0. "
-        "Fix by updating the outlet mapping with the correct IDs."
-        if disc_count > 0
-        else "Every outlet ID in the mapping was found in the uploaded Zomato, Swiggy, and Food Cost files."
-    )
-    c.font = Font(size=8, color="FFFFFF", italic=True, name="Arial")
-    c.fill = PatternFill("solid", start_color="B34700" if disc_count > 0 else "2D7A3A")
-    c.alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
-    ws4.row_dimensions[2].height = 28
-
-    for ci, (h, w) in enumerate(disc_cols, 1):
-        hc(ws4, 3, ci, h, bg=DISC_HDR if disc_count > 0 else "1A5C2A")
-        ws4.column_dimensions[get_column_letter(ci)].width = w
-    ws4.row_dimensions[3].height = 20
-
-    if discrepancies:
-        # Group by TL for visual clarity
-        current_tl = None
-        row_num4 = 4
-        for d in sorted(discrepancies, key=lambda x: (x['tl'], x['outlet'], x['platform'])):
-            # TL separator row
-            if d['tl'] != current_tl:
-                current_tl = d['tl']
-                ws4.merge_cells(f"A{row_num4}:{get_column_letter(len(disc_cols))}{row_num4}")
-                c = ws4.cell(row=row_num4, column=1, value=f"  {current_tl}")
-                c.font  = Font(bold=True, size=9, color="FFFFFF", name="Arial")
-                c.fill  = PatternFill("solid", start_color="4A3000")
-                c.alignment = Alignment(horizontal="left", vertical="center")
-                c.border = thin_border()
-                ws4.row_dimensions[row_num4].height = 16
-                row_num4 += 1
-
-            bg = "FFF0E6"  # light orange tint for all discrepancy rows
-            vals = [
-                d['tl'], d['outlet'], d['platform'],
-                d['brand'], d['id'], d['issue'], d['impact'],
-            ]
-            aligns = ["left", "left", "center", "center", "center", "left", "left"]
-            for ci, (v, al) in enumerate(zip(vals, aligns), 1):
-                cell = ws4.cell(row=row_num4, column=ci, value=v)
-                cell.font = Font(
-                    size=8, name="Arial",
-                    bold=(ci in (1, 2)),
-                    color="5C1A00" if ci >= 6 else "222222"
-                )
-                cell.fill = PatternFill("solid", start_color=bg)
-                cell.alignment = Alignment(horizontal=al, vertical="center", wrap_text=(ci >= 6))
-                cell.border = thin_border()
-            ws4.row_dimensions[row_num4].height = 28
-            row_num4 += 1
-    else:
-        # All clear row
-        ws4.merge_cells(f"A4:{get_column_letter(len(disc_cols))}4")
-        c = ws4.cell(row=4, column=1,
-                     value="✅  All outlet IDs matched successfully. No discrepancies found.")
-        c.font = Font(bold=True, size=10, color="155724", name="Arial")
-        c.fill = PatternFill("solid", start_color="D4EDDA")
-        c.alignment = Alignment(horizontal="center", vertical="center")
-        ws4.row_dimensions[4].height = 24
-
-    # ── SHEET 5: Data Notes ───────────────────────────────────────────────────
-    ws5 = wb.create_sheet("Data Notes")
-    ws5.merge_cells("A1:B1")
-    c = ws5["A1"]
-    c.value = f"Data Notes — {month}"
-    c.font  = Font(bold=True, size=12, color="FFFFFF", name="Arial")
-    c.fill  = PatternFill("solid", start_color=HDR)
-    c.alignment = Alignment(horizontal="center", vertical="center")
-    ws5.row_dimensions[1].height = 22
-    for ci,(h,w) in enumerate([("Outlet / TL",38),("Note",55)],1):
-        hc(ws5, 2, ci, h, bg=SUB)
-        ws5.column_dimensions[get_column_letter(ci)].width = w
-    for i,note in enumerate(disclaimers,3):
+    ws4.row_dimensions[1].height = 22
+    header_row(ws4, 2, ["Outlet / TL","Note"], CLR["hm"])
+    for i, note in enumerate(disclaimers, 3):
         parts = note.split("|",1)
-        for ci,v in enumerate([parts[0].strip(), parts[1].strip() if len(parts)>1 else ""],1):
-            c = ws5.cell(row=i, column=ci, value=v)
-            c.font = Font(size=8, name="Arial", color="444444")
-            c.border = thin_border()
-        ws5.row_dimensions[i].height = 14
+        ws4.cell(row=i, column=1, value=parts[0].strip()).font = Font(size=8, name="Arial")
+        ws4.cell(row=i, column=2, value=parts[1].strip() if len(parts)>1 else "").font = Font(size=8, name="Arial")
+        for col in (1,2):
+            ws4.cell(row=i, column=col).border = thin_border()
+        ws4.row_dimensions[i].height = 14
+    ws4.column_dimensions["A"].width = 38
+    ws4.column_dimensions["B"].width = 55
 
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
 
-
+# ══════════════════════════════════════════════════════════════════════════════
+# PDF REPORT BUILDER
+# ══════════════════════════════════════════════════════════════════════════════
 def build_pdf(results, flags, disclaimers, month):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     import matplotlib.patches as mpatches
+    import numpy as np
+    # Close any open figures to prevent memory issues on Streamlit Cloud
     plt.close('all')
-    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.lib.units import mm
     from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle,
-                                    Paragraph, Spacer, HRFlowable, Image as RLImage)
+                                    Paragraph, Spacer, PageBreak, HRFlowable)
+    from reportlab.platypus import Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER
 
-    DARK   = colors.HexColor("#2C3E50")
-    LIGHT  = colors.HexColor("#F8F9FA")
-    GOLD   = colors.HexColor("#F39C12")
-    SILV   = colors.HexColor("#95A5A6")
-    BRNZ   = colors.HexColor("#CD7F32")
-    PLAT   = colors.HexColor("#27AE60")
-    TIER_C = {"Platinum":PLAT,"Gold":GOLD,"Silver":SILV,"Bronze":BRNZ}
-    TIER_TXT = {"Platinum":colors.white,"Gold":colors.white,
-                "Silver":colors.HexColor("#222222"),"Bronze":colors.white}
+    C_BG  = "#0f0f0f"; C_PANEL = "#1a1a1a"; C_GOLD = "#e8a020"
+    C_TEXT = "#f0f0f0"; C_SUB = "#888888"
+    C_RED = "#ef4444"; C_AMBER = "#f59e0b"; C_GREEN = "#22c55e"
+    METRIC_COLORS = {
+        "Sale":"#f97316","Food Cost":"#10b981","Complaints":"#e8a020",
+        "KPT":"#3b82f6","Rating":"#a855f7","Hygiene":"#ec4899","Availability":"#06b6d4",
+    }
+    TIER_COL = {"Platinum":"#FFD700","Gold":"#FFA500","Silver":"#C0C0C0","Bronze":"#CD7F32"}
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
-                            topMargin=12*mm, bottomMargin=12*mm,
-                            leftMargin=14*mm, rightMargin=14*mm)
-    styles = getSampleStyleSheet()
+    def fig_to_rl(fig, w_mm, h_mm):
+        b = io.BytesIO()
+        fig.savefig(b, format='png', dpi=150, bbox_inches='tight', facecolor=fig.get_facecolor())
+        b.seek(0); plt.close(fig)
+        return RLImage(b, width=w_mm*mm, height=h_mm*mm)
 
-    title_sty = ParagraphStyle("t", fontName="Helvetica-Bold", fontSize=16,
-                                textColor=DARK, alignment=TA_CENTER, spaceAfter=3)
-    sub_sty   = ParagraphStyle("s", fontName="Helvetica", fontSize=9,
-                                textColor=colors.HexColor("#888888"),
-                                alignment=TA_CENTER, spaceAfter=10)
-    sec_sty   = ParagraphStyle("sec", fontName="Helvetica-Bold", fontSize=11,
-                                textColor=DARK, spaceBefore=8, spaceAfter=5)
+    def chart_stacked():
+        sr    = sorted(results, key=lambda x: x['avg_score'])
+        tls   = [r['tl'].split('(')[0].strip() for r in sr]
+        mkeys = [("Sale","sales_pts"),("Food Cost","fc_pts"),("Complaints","cmp_pts"),
+                 ("KPT","kpt_pts"),("Rating","rat_pts"),("Hygiene","hyg_pts"),("Availability","avail_pts")]
+        fig, ax = plt.subplots(figsize=(10,6))
+        fig.patch.set_facecolor(C_BG); ax.set_facecolor(C_PANEL)
+        lefts = np.zeros(len(sr))
+        for label, key in mkeys:
+            vals = [r[key] for r in sr]
+            bars = ax.barh(tls, vals, left=lefts, height=0.62,
+                           color=METRIC_COLORS[label], label=label, alpha=0.92)
+            for bar, v in zip(bars, vals):
+                if v > 0 and bar.get_width() > 0.4:
+                    ax.text(bar.get_x()+bar.get_width()/2, bar.get_y()+bar.get_height()/2,
+                            str(v), ha='center', va='center',
+                            fontsize=6.5, color='white', fontweight='bold')
+            lefts = lefts + np.array(vals, dtype=float)
+        for i, r in enumerate(sr):
+            ax.text(lefts[i]+0.15, i, f"{r['avg_score']}",
+                    va='center', ha='left', fontsize=7.5,
+                    color=TIER_COL.get(r['tier'], C_TEXT), fontweight='bold')
+        ax.set_xlim(-1, float(lefts.max())+2)
+        ax.set_xlabel("Total Points", color=C_SUB, fontsize=8)
+        ax.set_title("TL Performance — Points by Metric", color=C_TEXT, fontsize=11, fontweight='bold', pad=10)
+        ax.tick_params(axis='x', colors=C_SUB, labelsize=8)
+        ax.tick_params(axis='y', colors=C_TEXT, labelsize=8)
+        [ax.spines[s].set_color('#333') for s in ax.spines]
+        ax.set_axisbelow(True); ax.xaxis.grid(True, color='#2a2a2a', linewidth=0.5)
+        ax.legend(loc='lower right', fontsize=7, facecolor=C_PANEL,
+                  edgecolor='#333', labelcolor=C_TEXT, ncol=2)
+        fig.tight_layout(pad=1.2)
+        return fig_to_rl(fig, 170, 112)
 
-    sorted_r = sorted(results, key=lambda x: x['avg_score'], reverse=True)
+    def chart_donut_flags():
+        tier_order  = ["Platinum","Gold","Silver","Bronze"]
+        tier_counts = {t: sum(1 for r in results if r['tier']==t) for t in tier_order}
+        tier_counts = {k:v for k,v in tier_counts.items() if v > 0}
+        flag_cats   = {}
+        for _,_,issue,_,_,_ in flags:
+            flag_cats[issue] = flag_cats.get(issue,0)+1
+        fig, (ax1,ax2) = plt.subplots(1,2,figsize=(10,4.5))
+        fig.patch.set_facecolor(C_BG)
+        for ax in (ax1,ax2): ax.set_facecolor(C_PANEL)
+        wedge_colors = [TIER_COL[t] for t in tier_counts]
+        _,_,autotexts = ax1.pie(tier_counts.values(), colors=wedge_colors,
+            autopct='%1.0f%%', startangle=90, pctdistance=0.72,
+            wedgeprops=dict(width=0.55, edgecolor=C_BG, linewidth=2))
+        for at in autotexts:
+            at.set_fontsize(8); at.set_color('white'); at.set_fontweight('bold')
+        ax1.text(0,0.08,str(len(results)),ha='center',va='center',fontsize=22,color=C_GOLD,fontweight='bold')
+        ax1.text(0,-0.22,'TLs',ha='center',va='center',fontsize=9,color=C_SUB)
+        patches = [mpatches.Patch(color=TIER_COL[t],label=f"{t} ({v})") for t,v in tier_counts.items()]
+        ax1.legend(handles=patches,loc='lower center',fontsize=7.5,facecolor=C_PANEL,
+                   edgecolor='#333',labelcolor=C_TEXT,ncol=2,bbox_to_anchor=(0.5,-0.12))
+        ax1.set_title("Tier Distribution", color=C_TEXT, fontsize=10, fontweight='bold', pad=8)
+        if flag_cats:
+            cats  = sorted(flag_cats, key=flag_cats.get, reverse=True)
+            vals  = [flag_cats[c] for c in cats]
+            short = [c.replace(' ','\n') for c in cats]
+            bclrs = [C_RED if any(x in c for x in ('Complaint','Food','Decline')) else
+                     C_AMBER for c in cats]
+            bars  = ax2.bar(short, vals, color=bclrs, width=0.6, edgecolor='#333', linewidth=0.5)
+            for bar, v in zip(bars, vals):
+                ax2.text(bar.get_x()+bar.get_width()/2, bar.get_height()+0.3,
+                         str(v), ha='center', va='bottom', fontsize=8, color=C_TEXT, fontweight='bold')
+            ax2.set_title("Flags by Category", color=C_TEXT, fontsize=10, fontweight='bold', pad=8)
+            ax2.set_ylabel("# Outlets Flagged", color=C_SUB, fontsize=7.5)
+            ax2.tick_params(axis='x', colors=C_TEXT, labelsize=7.5)
+            ax2.tick_params(axis='y', colors=C_SUB)
+            [ax2.spines[s].set_color('#333') for s in ax2.spines]
+            ax2.yaxis.grid(True, color='#2a2a2a', linewidth=0.5)
+            ax2.set_axisbelow(True)
+            ax2.set_ylim(0, max(vals)*1.18)
+        fig.tight_layout(pad=1.5)
+        return fig_to_rl(fig, 170, 88)
+
+    def chart_heatmap():
+        mkeys = [("Sale","sales_pts"),("FC","fc_pts"),("Complaints","cmp_pts"),
+                 ("KPT","kpt_pts"),("Rating","rat_pts"),("Hygiene","hyg_pts"),("Avail","avail_pts")]
+        sr    = sorted(results, key=lambda x: x['avg_score'], reverse=True)
+        tls   = [r['tl'].split('(')[0].strip() for r in sr]
+        n_tl  = len(tls); n_m = len(mkeys)
+        mxo   = max(r['outlets'] for r in results)
+        max_pts = {"sales_pts":mxo,"fc_pts":mxo,"cmp_pts":4*mxo,"kpt_pts":mxo,
+                   "rat_pts":mxo,"hyg_pts":mxo,"avail_pts":mxo}
+        fig, ax = plt.subplots(figsize=(11,5.5))
+        fig.patch.set_facecolor(C_BG); ax.set_facecolor(C_BG)
+        for i, r in enumerate(sr):
+            for j, (label, key) in enumerate(mkeys):
+                v = r[key]; mx = max_pts[key]; pct = v/mx if mx > 0 else 0
+                if pct >= 0.75:   cbg="#14532d"; ctxt="#4ade80"
+                elif pct >= 0.40: cbg="#713f12"; ctxt="#fbbf24"
+                else:              cbg="#450a0a"; ctxt="#f87171"
+                rect = mpatches.FancyBboxPatch(
+                    (j+0.05, n_tl-i-1+0.05), 0.9, 0.9,
+                    boxstyle="round,pad=0.05",
+                    facecolor=cbg, edgecolor='#0f0f0f', linewidth=1.2)
+                ax.add_patch(rect)
+                ax.text(j+0.5, n_tl-i-0.5, str(int(v)), ha='center', va='center',
+                        fontsize=9, color=ctxt, fontweight='bold')
+        for i, r in enumerate(sr):
+            ax.text(n_m+0.15, n_tl-i-0.5, f"{r['avg_score']}", ha='left', va='center',
+                    fontsize=8, color=TIER_COL.get(r['tier'], C_TEXT), fontweight='bold')
+        for j, (label, _) in enumerate(mkeys):
+            ax.text(j+0.5, n_tl+0.15, label, ha='center', va='bottom',
+                    fontsize=7.5, color=C_GOLD, fontweight='bold', rotation=22)
+        for i, tl in enumerate(tls):
+            ax.text(-0.1, n_tl-i-0.5, tl, ha='right', va='center', fontsize=7.5, color=C_TEXT)
+        ax.text(n_m+0.15, n_tl+0.15, "Avg", ha='left', va='bottom',
+                fontsize=7.5, color=C_GOLD, fontweight='bold')
+        legend_patches = [
+            mpatches.Patch(color="#14532d", label="Green >= 75% of max"),
+            mpatches.Patch(color="#713f12", label="Amber 40-75%"),
+            mpatches.Patch(color="#450a0a", label="Red < 40%"),
+        ]
+        ax.legend(handles=legend_patches, loc='lower right', fontsize=7,
+                  facecolor=C_PANEL, edgecolor='#333', labelcolor=C_TEXT,
+                  bbox_to_anchor=(1.18,-0.02))
+        ax.set_xlim(-3.5, n_m+1.8); ax.set_ylim(-0.2, n_tl+0.9); ax.axis('off')
+        ax.set_title("Performance Heatmap — All Metrics", color=C_TEXT,
+                     fontsize=11, fontweight='bold', pad=12, loc='left')
+        fig.tight_layout(pad=1.0)
+        return fig_to_rl(fig, 175, 108)
+
+    buf   = io.BytesIO()
+    doc   = SimpleDocTemplate(buf, pagesize=A4,
+                               topMargin=14*mm, bottomMargin=14*mm,
+                               leftMargin=14*mm, rightMargin=14*mm)
+    rl_st = getSampleStyleSheet()
+    dark  = colors.HexColor("#1A1A2E")
+    goldc = colors.HexColor("#e8a020")
     story = []
 
-    # ── TITLE ──
-    story.append(Paragraph("RollsKing — Monthly Performance Report", title_sty))
+    def sh(text):
+        return Paragraph(text, ParagraphStyle('sh', parent=rl_st['Normal'],
+            fontSize=11, textColor=goldc, fontName='Helvetica-Bold', spaceBefore=6, spaceAfter=4))
+    def gr():
+        return HRFlowable(width="100%", thickness=1, color=goldc, spaceAfter=4)
+    def cap(text):
+        return Paragraph(text, ParagraphStyle('cap', parent=rl_st['Normal'],
+            fontSize=8, textColor=colors.HexColor("#555555"), spaceAfter=6))
+
+    # Page 1: Header + TL table
+    story.append(Paragraph("RollsKing — Monthly Performance Report",
+        ParagraphStyle('title', parent=rl_st['Title'], fontSize=20,
+                       textColor=colors.white, backColor=dark,
+                       alignment=TA_CENTER, spaceAfter=2)))
     story.append(Paragraph(
         f"{month}  |  {datetime.now().strftime('%d %b %Y, %H:%M')}  |  "
-        f"{len(results)} Team Leaders  |  {sum(r['outlets'] for r in results)} Outlets",
-        sub_sty))
-    story.append(HRFlowable(width="100%", thickness=1, color=DARK, spaceAfter=8))
+        f"{len(results)} Team Leaders  |  {sum(r['outlets'] for r in results)} Outlets  |  {len(flags)} Flags",
+        ParagraphStyle('sub', parent=rl_st['Normal'], fontSize=9,
+                       textColor=colors.HexColor("#888888"), alignment=TA_CENTER, spaceAfter=8)))
+    story.append(gr())
 
-    # ── SECTION 1: PERFORMANCE SUMMARY TABLE ──────────────────────────────────
-    story.append(Paragraph("Performance Summary", sec_sty))
+    sorted_r  = sorted(results, key=lambda x: x['avg_score'], reverse=True)
+    tier_rl   = {"Platinum":colors.HexColor("#FFD700"),"Gold":colors.HexColor("#FFA500"),
+                 "Silver":colors.HexColor("#C0C0C0"),"Bronze":colors.HexColor("#CD7F32")}
+    tbl_data  = [["Team Leader","Outlets","Sale","FC","Cmp","KPT","Rating","Hyg","Avail","Avg","Tier"]]
+    tier_rows = {}
+    for idx, r in enumerate(sorted_r, 1):
+        tbl_data.append([r['tl'],r['outlets'],r['sales_pts'],r['fc_pts'],r['cmp_pts'],
+                         r['kpt_pts'],r['rat_pts'],r['hyg_pts'],r['avail_pts'],r['avg_score'],r['tier']])
+        tier_rows[idx] = r['tier']
 
-    tbl_data = [["Team Leader","Outlets","Sale","FC","Cmp","KPT","Rating","Hygiene","Avail","Total","Avg","Tier"]]
-    tier_idx = {}
-    for ri, r in enumerate(sorted_r, 1):
-        tbl_data.append([
-            r['tl'], r['outlets'],
-            r['sales_pts'], r['fc_pts'], r['cmp_pts'],
-            r['kpt_pts'], r['rat_pts'], r['hyg_pts'], r['avail_pts'],
-            r['total_pts'], f"{r['avg_score']:.2f}", r['tier']
-        ])
-        tier_idx[ri] = r['tier']
+    col_w = [45*mm,13*mm,11*mm,10*mm,11*mm,11*mm,13*mm,11*mm,11*mm,14*mm,17*mm]
+    tbl   = Table(tbl_data, colWidths=col_w, repeatRows=1)
+    ts    = TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),dark),('TEXTCOLOR',(0,0),(-1,0),colors.white),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),7.5),
+        ('ALIGN',(0,0),(-1,-1),'CENTER'),('ALIGN',(0,1),(0,-1),'LEFT'),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor("#F5F5F5")]),
+        ('GRID',(0,0),(-1,-1),0.4,colors.HexColor("#CCCCCC")),
+        ('VALIGN',(0,0),(-1,-1),'MIDDLE'),
+        ('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3),
+    ])
+    for row_idx, tier in tier_rows.items():
+        tc = tier_rl.get(tier, colors.white)
+        ts.add('BACKGROUND',(10,row_idx),(10,row_idx),tc)
+        ts.add('FONTNAME',(10,row_idx),(10,row_idx),'Helvetica-Bold')
+        ts.add('TEXTCOLOR',(10,row_idx),(10,row_idx),colors.HexColor("#1A1A1A"))
+    tbl.setStyle(ts); story.append(tbl)
 
-    cw = [55*mm,13*mm,12*mm,10*mm,11*mm,11*mm,13*mm,13*mm,11*mm,13*mm,12*mm,16*mm]
-    ts = [
-        ("BACKGROUND",  (0,0),(-1,0), DARK),
-        ("TEXTCOLOR",   (0,0),(-1,0), colors.white),
-        ("FONTNAME",    (0,0),(-1,0), "Helvetica-Bold"),
-        ("FONTSIZE",    (0,0),(-1,-1), 8),
-        ("ALIGN",       (0,0),(-1,-1), "CENTER"),
-        ("ALIGN",       (0,1),(0,-1),  "LEFT"),
-        ("FONTNAME",    (0,1),(0,-1),  "Helvetica-Bold"),
-        ("ROWBACKGROUNDS",(0,1),(-1,-1),[colors.white, colors.HexColor("#F5F7FA")]),
-        ("GRID",        (0,0),(-1,-1), 0.4, colors.HexColor("#DDDDDD")),
-        ("TOPPADDING",  (0,0),(-1,-1), 4),
-        ("BOTTOMPADDING",(0,0),(-1,-1),4),
-        ("LEFTPADDING", (0,0),(-1,-1), 4),
+    # Page 2: Stacked bar
+    story.append(PageBreak())
+    story.append(sh("TL Score Breakdown — Points by Metric")); story.append(gr())
+    story.append(cap("Sorted by avg score (lowest to highest). Number on right = avg per outlet. Dot = tier."))
+    story.append(chart_stacked())
+
+    # Page 3: Donut + flags
+    story.append(PageBreak())
+    story.append(sh("Network Overview — Tier Distribution & Flag Summary")); story.append(gr())
+    story.append(cap("Left: tier spread across all TLs. Right: flagged outlet count by category."))
+    story.append(chart_donut_flags())
+    story.append(Spacer(1,4*mm))
+    if flags:
+        story.append(sh(f"Flagged Outlets  ({len(flags)} total)")); story.append(gr())
+        fd = [["Team Leader","Outlet","Issue","Value","Threshold"]]
+        for tl,outlet,issue,val,thresh,_ in flags:
+            fd.append([tl,outlet,issue,val,thresh])
+        ft = Table(fd, colWidths=[40*mm,45*mm,34*mm,20*mm,22*mm], repeatRows=1)
+        ft.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor("#7f1d1d")),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),7),
+            ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor("#FFF5F5")]),
+            ('GRID',(0,0),(-1,-1),0.4,colors.HexColor("#CCCCCC")),
+            ('ALIGN',(0,0),(-1,-1),'CENTER'),('ALIGN',(0,1),(1,-1),'LEFT'),
+            ('TOPPADDING',(0,0),(-1,-1),2),('BOTTOMPADDING',(0,0),(-1,-1),2),
+        ]))
+        story.append(ft)
+
+    # Page 4: Heatmap + scoring key
+    story.append(PageBreak())
+    story.append(sh("Performance Heatmap — Full Network at a Glance")); story.append(gr())
+    story.append(cap("Each cell = raw points. Green >= 75% of max | Amber 40-75% | Red < 40%. Avg = per-outlet average."))
+    story.append(chart_heatmap())
+    story.append(Spacer(1,4*mm))
+    story.append(sh("Scoring Reference")); story.append(gr())
+    key_data = [
+        ['Metric','Rule','Source'],
+        ['Sale','1pt per outlet beating prev month Net Sale — summed per TL','PetPooja food cost sheet (Net Sale + PC)'],
+        ['Food Cost','< 40% = 1pt | >= 40% = 0pt','((Opening+Local+Store)-Closing)/NetSale*100'],
+        ['Complaints','0-<1%=4pts | 1-<2%=3pts | 2-<3%=1pt | >=3%=0pt','Zomato + Swiggy blended % of total orders'],
+        ['KPT','< 12 min = 1pt | >= 12 min = 0pt','Avg of Zomato RK KPT + Swiggy RK Avg Prep Time'],
+        ['Rating','>= 4.0 = 1pt | < 4.0 = 0pt','Zomato Average Rating (all available IDs)'],
+        ['Hygiene','Sum of Hygiene Score column per TL','Hygiene Score column in food cost sheet'],
+        ['Availability','>= 98% = 1pt | < 98% = 0pt','Avg of Zomato Online% + Swiggy Online Availability%'],
+        ['Grade','Bronze 0-3 | Silver 3-6 | Gold 6-8 | Platinum 8+','Total Pts / No. of outlets'],
     ]
-    for ri, tier in tier_idx.items():
-        tc = TIER_C.get(tier, SILV)
-        tt = TIER_TXT.get(tier, colors.white)
-        ts += [("BACKGROUND",(11,ri),(11,ri),tc),
-               ("TEXTCOLOR", (11,ri),(11,ri),tt),
-               ("FONTNAME",  (11,ri),(11,ri),"Helvetica-Bold")]
-
-    tbl = Table(tbl_data, colWidths=cw)
-    tbl.setStyle(TableStyle(ts))
-    story.append(tbl)
-    story.append(Spacer(1, 10*mm))
-    story.append(HRFlowable(width="100%", thickness=0.5,
-                             color=colors.HexColor("#DDDDDD"), spaceAfter=8))
-
-    # ── SECTION 2: TIER DISTRIBUTION PIE CHART ────────────────────────────────
-    story.append(Paragraph("Grade Distribution", sec_sty))
-
-    tier_counts = {"Platinum":0,"Gold":0,"Silver":0,"Bronze":0}
-    for r in results:
-        tier_counts[r["tier"]] = tier_counts.get(r["tier"],0) + 1
-    active = {k:v for k,v in tier_counts.items() if v > 0}
-    pie_clr = {"Platinum":"#27AE60","Gold":"#F39C12","Silver":"#95A5A6","Bronze":"#CD7F32"}
-
-    fig, ax = plt.subplots(figsize=(5, 3.5), facecolor="white")
-    wedges, texts, autotexts = ax.pie(
-        active.values(),
-        labels=[f"{k} ({v})" for k,v in active.items()],
-        colors=[pie_clr[k] for k in active],
-        autopct="%1.0f%%",
-        startangle=140,
-        pctdistance=0.72,
-        textprops={"fontsize":9,"color":"#2C3E50"},
-        wedgeprops={"edgecolor":"white","linewidth":2},
-    )
-    for at in autotexts:
-        at.set_color("white"); at.set_fontweight("bold"); at.set_fontsize(9)
-    ax.set_title("TL Tier Breakdown", fontsize=10, color="#2C3E50",
-                 fontweight="bold", pad=8)
-    plt.tight_layout()
-
-    img_buf = io.BytesIO()
-    fig.savefig(img_buf, format="png", dpi=150, bbox_inches="tight", facecolor="white")
-    plt.close(fig)
-    img_buf.seek(0)
-    story.append(RLImage(img_buf, width=110*mm, height=78*mm))
-
+    kt = Table(key_data, colWidths=[28*mm,78*mm,58*mm], repeatRows=1)
+    kt.setStyle(TableStyle([
+        ('BACKGROUND',(0,0),(-1,0),dark),('TEXTCOLOR',(0,0),(-1,0),colors.white),
+        ('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),7.5),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white,colors.HexColor("#F5F5F5")]),
+        ('GRID',(0,0),(-1,-1),0.4,colors.HexColor("#CCCCCC")),
+        ('ALIGN',(0,0),(-1,-1),'LEFT'),
+        ('TOPPADDING',(0,0),(-1,-1),3),('BOTTOMPADDING',(0,0),(-1,-1),3),
+    ]))
+    story.append(kt)
+    if disclaimers:
+        story.append(Spacer(1,4*mm)); story.append(sh("Data Notes")); story.append(gr())
+        for d in disclaimers:
+            story.append(Paragraph(f"• {d}",
+                ParagraphStyle('dn', parent=rl_st['Normal'],
+                               fontSize=7, textColor=colors.HexColor("#666666"), spaceAfter=2)))
     doc.build(story)
-    buf.seek(0)
     return buf.getvalue()
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SESSION STATE
@@ -1302,12 +1262,6 @@ with tab_report:
                     for d in prev_files:
                         prev_fc.update(load_food_cost(d["wb"]))
 
-                    # ── Run ID audit BEFORE calculating ──────────────────────
-                    discrepancies = audit_mapping(
-                        mapping, all_zmt, all_swg, all_fc,
-                        inactive_pos=st.session_state.inactive_pos
-                    )
-
                     results, disclaimers, flags = calculate(
                         mapping, all_zmt, all_swg, all_fc,
                         prev_sales=prev_fc if prev_fc else None,
@@ -1315,8 +1269,7 @@ with tab_report:
                     )
 
                     month_slug  = sel_month.replace(" ","_")
-                    excel_bytes = build_excel(results, disclaimers, flags, sel_month,
-                                             discrepancies=discrepancies)
+                    excel_bytes = build_excel(results, disclaimers, flags, sel_month)
                     st.session_state.report_bytes = excel_bytes
                     st.session_state.report_name  = f"RollsKing_Report_{month_slug}.xlsx"
 
@@ -1339,18 +1292,6 @@ with tab_report:
                     st.success(f"✓ Report ready — {len(results)} TLs · "
                                f"{sum(r['outlets'] for r in results)} Outlets · "
                                f"{len(flags)} Flags{sale_note}")
-
-                    # Show discrepancy warning inline if issues found
-                    if discrepancies:
-                        tls_affected = len(set(d['tl'] for d in discrepancies))
-                        st.warning(
-                            f"⚠️ **{len(discrepancies)} ID issue{'s' if len(discrepancies)!=1 else ''} detected** "
-                            f"across {tls_affected} TL{'s' if tls_affected!=1 else ''} — "
-                            f"affected metrics scored 0. See **Data Discrepancy** sheet in the Excel download for full details."
-                        )
-                    else:
-                        st.info("✅ All outlet IDs matched — no data discrepancies found.")
-
                     if not pdf_ok:
                         st.warning("PDF failed — see error below:")
                         st.code(st.session_state.get('_pdf_error','unknown error'))
@@ -1470,7 +1411,7 @@ with tab_outlets:
                     toggle = st.checkbox(
                         label,
                         value=(not is_off),
-                        key=f"status_{tl}_{pos}_{i}"
+                        key=f"status_{pos}"
                     )
                     if not toggle and pos not in inactive:
                         st.session_state.inactive_pos.add(pos)
