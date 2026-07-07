@@ -429,7 +429,7 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
     inactive_pos = inactive_pos or set()
 
     for tl, outlets in mapping.items():
-        n           = len([o for o in outlets if o['pos'] not in inactive_pos])
+        n           = len([o for o in outlets if f"{tl}|{o['outlet']}" not in inactive_pos])
         tl_cmp      = tl_kpt = tl_rat = tl_fc = tl_av = tl_sale = 0
         tl_hyg      = 0
         outlet_rows = []
@@ -438,7 +438,8 @@ def calculate(mapping, zmt, swg, fc, prev_sales=None, inactive_pos=None):
             outlet = o['outlet']
             pos    = o['pos']
             # Skip outlets marked inactive for this month
-            if pos in inactive_pos:
+            # Identity is TL|outlet (always unique) — POS can be None for multiple outlets
+            if f"{tl}|{outlet}" in inactive_pos:
                 continue
             # Valid IDs only (None = RF not available for this outlet)
             zids   = [x for x in [o.get('zmt_rk'), o.get('zmt_rf')] if x]
@@ -1148,7 +1149,7 @@ for k, v in [('logged_in',False),('report_bytes',None),('report_name',None),
 if 'mapping' not in st.session_state:
     st.session_state.mapping = {k: list(v) for k, v in DEFAULT_MAPPING.items()}
 if 'inactive_pos' not in st.session_state:
-    st.session_state.inactive_pos = set()  # set of POS IDs marked inactive this session
+    st.session_state.inactive_pos = set()  # set of "TL|outlet" ids marked inactive this session
 
 # ══════════════════════════════════════════════════════════════════════════════
 # LOGIN
@@ -1395,8 +1396,8 @@ with tab_outlets:
 
     # Show all TLs with their outlets as toggles
     for tl, outlets in sorted(mapping.items()):
-        active_count   = sum(1 for o in outlets if o['pos'] not in inactive)
-        inactive_count = sum(1 for o in outlets if o['pos'] in inactive)
+        active_count   = sum(1 for o in outlets if f"{tl}|{o['outlet']}" not in inactive)
+        inactive_count = sum(1 for o in outlets if f"{tl}|{o['outlet']}" in inactive)
         badge = f"<span style='color:#4ade80;font-size:0.78rem;'>{active_count} active</span>"
         if inactive_count:
             badge += f" &nbsp; <span style='color:#ef4444;font-size:0.78rem;'>{inactive_count} inactive</span>"
@@ -1405,19 +1406,20 @@ with tab_outlets:
             cols = st.columns(2)
             for i, o in enumerate(outlets):
                 pos    = o['pos']
-                is_off = pos in inactive
+                uid    = f"{tl}|{o['outlet']}"   # unique per outlet (POS may be None)
+                is_off = uid in inactive
                 with cols[i % 2]:
                     label = f"{'🔴' if is_off else '🟢'}  {o['outlet']}"
                     toggle = st.checkbox(
                         label,
                         value=(not is_off),
-                        key=f"status_{pos}"
+                        key=f"status_{uid}"
                     )
-                    if not toggle and pos not in inactive:
-                        st.session_state.inactive_pos.add(pos)
+                    if not toggle and uid not in inactive:
+                        st.session_state.inactive_pos.add(uid)
                         st.rerun()
-                    elif toggle and pos in inactive:
-                        st.session_state.inactive_pos.discard(pos)
+                    elif toggle and uid in inactive:
+                        st.session_state.inactive_pos.discard(uid)
                         st.rerun()
 
     st.markdown("<div style='margin:1rem 0;'></div>", unsafe_allow_html=True)
@@ -1436,7 +1438,7 @@ with tab_outlets:
         """, unsafe_allow_html=True)
         for tl, outlets in sorted(mapping.items()):
             for o in outlets:
-                if o['pos'] in inactive:
+                if f"{tl}|{o['outlet']}" in inactive:
                     st.markdown(f"&nbsp;&nbsp;🔴 **{o['outlet']}** — {tl} (POS: {o['pos']})")
 
         if st.button("🔄 Reset — Mark All Outlets Active"):
