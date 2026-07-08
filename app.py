@@ -144,7 +144,7 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector 125 Noida",    "pos":373602, "zmt_rk":21824279,"zmt_rf":21819721,"swg_rk":1069514,"swg_rf":1069500},
     {"outlet":"Sector-73 Noida",     "pos":97074,  "zmt_rk":20508934,"zmt_rf":20511693,"swg_rk":635149, "swg_rf":641252},
     {"outlet":"Sector-44 Noida",     "pos":39966,  "zmt_rk":18575970,"zmt_rf":21570341,"swg_rk":42813,  "swg_rf":1035832},
-    {"outlet":"Sector 93 Noida",     "pos":None,   "zmt_rk":22802211,"zmt_rf":None,   "swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/RF/Swiggy pending
+    {"outlet":"Sector 93 Noida",     "pos":441137, "zmt_rk":22802211,"zmt_rf":22761225,"swg_rk":1379342,"swg_rf":1379341},
   ],
   "Ajay Halder": [
     {"outlet":"Sector 4 Noida",      "pos":21787,  "zmt_rk":19364731,"zmt_rf":20884617,"swg_rk":54622,  "swg_rf":784582},
@@ -153,7 +153,9 @@ DEFAULT_MAPPING = {
     {"outlet":"Sector-18",           "pos":26952,  "zmt_rk":304612,  "zmt_rf":22333370,"swg_rk":42807,  "swg_rf":1238358},  # RF verified
     {"outlet":"Gaur City GNoida",    "pos":112772, "zmt_rk":20589872,"zmt_rf":21087471,"swg_rk":879431, "swg_rf":940381},
     {"outlet":"Eco Loft",            "pos":74178,  "zmt_rk":20264919,"zmt_rf":22245955,"swg_rk":531120, "swg_rf":1227942},
-    {"outlet":"Sector 122 Noida",    "pos":None,   "zmt_rk":None,   "zmt_rf":22735841,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/RK/Swiggy pending
+    {"outlet":"Sector 122 Noida",    "pos":443413, "zmt_rk":19200571,"zmt_rf":22735841,"swg_rk":233835, "swg_rf":1382942},
+    {"outlet":"Mayur Vihar Phase 3","pos":104888, "zmt_rk":20538416,"zmt_rf":22691860,"swg_rk":663278, "swg_rf":1344903},
+    {"outlet":"Sector 63",          "pos":436768, "zmt_rk":22692840,"zmt_rf":22692844,"swg_rk":1364168,"swg_rf":1364167},
   ],
   "Sunil Sharma": [
     {"outlet":"RDC Raj Nagar Gzb",   "pos":363143, "zmt_rk":18962941,"zmt_rf":21184529,"swg_rk":879460, "swg_rf":883371},
@@ -175,14 +177,13 @@ DEFAULT_MAPPING = {
     {"outlet":"Nathupur Gurugram",   "pos":108782, "zmt_rk":20582763,"zmt_rf":20884615,"swg_rk":668475, "swg_rf":783922},
     {"outlet":"Old DLF Sec-14 Gurgaon","pos":108777,"zmt_rk":20582827,"zmt_rf":20884599,"swg_rk":668470,"swg_rf":854941},
     {"outlet":"Sector-57 Gurugram",  "pos":74068,  "zmt_rk":20463325,"zmt_rf":20964530,"swg_rk":624165, "swg_rf":803919},
-    {"outlet":"Wazirabad Gurugram",  "pos":108779, "zmt_rk":20582847,"zmt_rf":None,    "swg_rk":668467, "swg_rf":None},    # RK only
     {"outlet":"Gurugram Sec-82",     "pos":30407,  "zmt_rk":19513923,"zmt_rf":21087476,"swg_rk":327106, "swg_rf":850542},
     {"outlet":"Sector 90 Gurugram",  "pos":380769, "zmt_rk":21929020,"zmt_rf":21929049,"swg_rk":1102249,"swg_rf":1101896},
     {"outlet":"Rohini",              "pos":93493,  "zmt_rk":22100897,"zmt_rf":22101011,"swg_rk":622353, "swg_rf":1167156},
     {"outlet":"Vikashpuri",          "pos":404584, "zmt_rk":22227640,"zmt_rf":22227658,"swg_rk":1224350,"swg_rf":1224348},
     {"outlet":"Uttam Nagar Dwarka",  "pos":414828, "zmt_rk":22507885,"zmt_rf":22779634,"swg_rk":1280807,"swg_rf":1280814},
     {"outlet":"Subhash Nagar",       "pos":398993, "zmt_rk":22165860,"zmt_rf":22165921,"swg_rk":1196325,"swg_rf":1196321},
-    {"outlet":"Golf Course Gurugram","pos":None,   "zmt_rk":None,   "zmt_rf":22691632,"swg_rk":None,  "swg_rf":1364164},  # Partial IDs — POS/RK pending
+    {"outlet":"Golf Course Gurugram","pos":108779, "zmt_rk":20582847,"zmt_rf":22691632,"swg_rk":668467, "swg_rf":1364164},  # Relocated from Wazirabad Gurugram (Feb 2026)
   ],
   "Zeeshan Ali": [
     {"outlet":"Shaheen Bagh",        "pos":118685, "zmt_rk":20666436,"zmt_rf":21190578,"swg_rk":704360, "swg_rf":879433},
@@ -206,18 +207,19 @@ DEFAULT_MAPPING = {
     {"outlet":"Bel Road Bangalore",  "pos":75897,  "zmt_rk":20263151,"zmt_rf":21037571,"swg_rk":536015, "swg_rf":728281},
     {"outlet":"Habble Bangalore",    "pos":95682,  "zmt_rk":20471662,"zmt_rf":None,    "swg_rk":625912, "swg_rf":None},    # RK only
     {"outlet":"Indira Nagar Bangalore","pos":403199,"zmt_rk":22179137,"zmt_rf":22179218,"swg_rk":1203098,"swg_rf":1203101},
+    {"outlet":"HSR",                "pos":437090, "zmt_rk":22691724,"zmt_rf":22691793,"swg_rk":1364163,"swg_rf":1364162},
+    {"outlet":"Marathahalli",       "pos":438962, "zmt_rk":22691479,"zmt_rf":22691689,"swg_rk":1369113,"swg_rf":1373601},
   ],
   "Virendra Pratap": [
     {"outlet":"Mohanram Nagar",      "pos":84743,  "zmt_rk":20410863,"zmt_rf":20994725,"swg_rk":588878, "swg_rf":808838},
     {"outlet":"Madipakkam",          "pos":84742,  "zmt_rk":20410826,"zmt_rf":21627457,"swg_rk":588790, "swg_rf":1021132},
     {"outlet":"Parengudi Chennai",   "pos":97078,  "zmt_rk":20486896,"zmt_rf":21087508,"swg_rk":631195, "swg_rf":848486},
-    {"outlet":"DLF Chennai",         "pos":None,   "zmt_rk":22802209,"zmt_rf":22779533,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/Swiggy pending
+    {"outlet":"DLF Chennai",         "pos":415396, "zmt_rk":22802209,"zmt_rf":22779533,"swg_rk":794778, "swg_rf":848491},
   ],
   "Atul Kumar": [
     {"outlet":"Apple Ghar Pune",     "pos":129883, "zmt_rk":20748035,"zmt_rf":21044940,"swg_rk":733937, "swg_rf":741458},
     {"outlet":"Hinjewadi Phase 1",   "pos":141096, "zmt_rk":20855724,"zmt_rf":21049119,"swg_rk":756772, "swg_rf":734618},
     {"outlet":"Millennium Mall Pune","pos":137998, "zmt_rk":21067154,"zmt_rf":None,    "swg_rk":833916, "swg_rf":None},    # RK only
-    {"outlet":"Shivaji Nagar Pune",  "pos":346318, "zmt_rk":21435196,"zmt_rf":21604740,"swg_rk":354312, "swg_rf":1009928},
   ],
   "Bhupesh Bhatt": [
     {"outlet":"Madhapur",            "pos":24485,  "zmt_rk":18953624,"zmt_rf":21049126,"swg_rk":120196, "swg_rf":698521},
@@ -226,7 +228,6 @@ DEFAULT_MAPPING = {
     {"outlet":"Taranagar Hyderabad", "pos":141099, "zmt_rk":20855101,"zmt_rf":21080636,"swg_rk":766665, "swg_rf":844889},
     {"outlet":"RK Puram Hyderabad",  "pos":44718,  "zmt_rk":19714313,"zmt_rf":None,    "swg_rk":375980, "swg_rf":None},    # RK only
     {"outlet":"Lulu Mall Hyderabad", "pos":141214, "zmt_rk":21154081,"zmt_rf":None,    "swg_rk":866698, "swg_rf":None},    # RK only
-    {"outlet":"Miyapur",             "pos":24489,  "zmt_rk":21779883,"zmt_rf":21779942,"swg_rk":1063096,"swg_rf":1061876},
     {"outlet":"Goa Anjuna",          "pos":339817, "zmt_rk":21365117,"zmt_rf":22213849,"swg_rk":946493, "swg_rf":1203077},
   ],
   "Milan": [
@@ -236,10 +237,9 @@ DEFAULT_MAPPING = {
     {"outlet":"Mumbai BKC",          "pos":375018, "zmt_rk":21824216,"zmt_rf":21824173,"swg_rk":1076952,"swg_rf":1102348},
     {"outlet":"Mumbai Chembur",      "pos":383109, "zmt_rk":21966993,"zmt_rf":22030585,"swg_rk":1104174,"swg_rf":1140316},
     {"outlet":"Airoli Navi Mumbai",  "pos":386396, "zmt_rk":21982077,"zmt_rf":22030515,"swg_rk":1123441,"swg_rf":1140313},
-    {"outlet":"Mumbai Dahisar",      "pos":399741, "zmt_rk":22170342,"zmt_rf":None,   "swg_rk":1220916,"swg_rf":1276496},  # New Feb 2026
     {"outlet":"Mumbai Marol",        "pos":404829, "zmt_rk":22274879,"zmt_rf":22711087,"swg_rk":1238360,"swg_rf":1276481},
     {"outlet":"Mira Road Mumbai",    "pos":386734, "zmt_rk":22044961,"zmt_rf":22150856,"swg_rk":1142360,"swg_rf":1179699},
-    {"outlet":"Koparkhairne",        "pos":None,   "zmt_rk":22802214,"zmt_rf":22770699,"swg_rk":None,  "swg_rf":None},   # Partial IDs — POS/Swiggy pending
+    {"outlet":"Koparkhairne",        "pos":442404, "zmt_rk":22802214,"zmt_rf":22770699,"swg_rk":1379340,"swg_rf":1379339},
   ],
 }
 
